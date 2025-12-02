@@ -1,5 +1,7 @@
 use crate::utils::snowflake::SnowflakeGenerator;
+use serde::{Deserialize, Serialize};
 
+#[derive(Serialize, Deserialize, Debug)]
 struct AuthUser {
     pub username: String,
     pub user_id: String,
@@ -16,4 +18,5 @@ impl AuthUser {
     }
 }
 
+#[derive(Serialize, Deserialize, Debug)]
 struct User {}

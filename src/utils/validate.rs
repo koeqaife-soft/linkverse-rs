@@ -1,3 +1,4 @@
+use super::response::ApiResponse;
 use axum::http::StatusCode;
 use axum::{
     Json,
@@ -14,16 +15,22 @@ where
     B: Send + Sync + 'static,
     T: DeserializeOwned + Validate,
 {
-    type Rejection = (StatusCode, String);
+    type Rejection = (StatusCode, ApiResponse<()>);
 
     async fn from_request(req: Request, state: &B) -> Result<Self, Self::Rejection> {
-        let Json(payload) = Json::<T>::from_request(req, &state)
-            .await
-            .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?;
+        let Json(payload) = Json::<T>::from_request(req, &state).await.map_err(|_| {
+            (
+                StatusCode::BAD_REQUEST,
+                ApiResponse::<()>::err("INCORRECT_DATA"),
+            )
+        })?;
 
-        payload
-            .validate()
-            .map_err(|e| (StatusCode::UNPROCESSABLE_ENTITY, e.to_string()))?;
+        payload.validate().map_err(|_| {
+            (
+                StatusCode::UNPROCESSABLE_ENTITY,
+                ApiResponse::<()>::err("INCORRECT_DATA"),
+            )
+        })?;
 
         Ok(ValidatedJson(payload))
     }
