@@ -56,10 +56,10 @@ impl SnowflakeGenerator {
                 break;
             }
 
-            ((ts << (COUNTER_BITS + SID_BITS + PID_BITS))
+            (ts << (COUNTER_BITS + SID_BITS + PID_BITS))
                 | ((tid & ((1 << PID_BITS) - 1)) << (COUNTER_BITS + SID_BITS))
                 | ((self.server_id as u64 & ((1 << SID_BITS) - 1)) << COUNTER_BITS)
-                | counter)
+                | counter
         })
     }
 
