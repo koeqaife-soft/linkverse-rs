@@ -3,7 +3,7 @@ use std::sync::Arc;
 use crate::utils::state::AppState;
 use axum::Router;
 use dotenvy::dotenv;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 use tracing_subscriber;
 
 mod database;
@@ -32,5 +32,6 @@ async fn main() {
     let listener = tokio::net::TcpListener::bind(shared_state.config.url.clone())
         .await
         .unwrap();
+    info!("Listening on {:?}", shared_state.config.url);
     axum::serve(listener, router).await.unwrap();
 }
