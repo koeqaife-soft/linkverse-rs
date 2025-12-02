@@ -3,7 +3,7 @@ use std::sync::Arc;
 use crate::utils::state::AppState;
 use axum::Router;
 use dotenvy::dotenv;
-use tracing::{error, info, warn};
+use tracing::{error, info};
 use tracing_subscriber;
 
 mod database;
@@ -12,7 +12,7 @@ mod entities;
 mod services;
 mod utils;
 
-#[tokio::main(flavor = "multi_thread")]
+#[tokio::main(flavor = "multi_thread", worker_threads = 32)]
 async fn main() {
     dotenv().ok();
 
