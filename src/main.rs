@@ -6,8 +6,10 @@ use dotenvy::dotenv;
 use tracing::{error, info};
 use tracing_subscriber;
 
+mod database;
 mod endpoints;
 mod entities;
+mod services;
 mod utils;
 
 #[tokio::main(flavor = "multi_thread")]
