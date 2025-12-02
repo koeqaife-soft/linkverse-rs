@@ -3,6 +3,7 @@ use axum::{
     Json,
     extract::{FromRequest, Request},
 };
+use regex::Regex;
 use serde::de::DeserializeOwned;
 use validator::Validate;
 
@@ -26,4 +27,17 @@ where
 
         Ok(ValidatedJson(payload))
     }
+}
+
+fn validate_username(nickname: &str) -> bool {
+    let re = Regex::new(r"^[A-Za-z0-9._]+$").unwrap();
+    if !re.is_match(nickname) {
+        return false;
+    }
+
+    if nickname.contains("..") || nickname.contains("__") {
+        return false;
+    }
+
+    true
 }

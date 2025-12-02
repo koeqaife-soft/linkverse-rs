@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use crate::utils::state::AppState;
 use axum::Router;
 use dotenvy::dotenv;
@@ -5,6 +7,7 @@ use tracing::{error, info};
 use tracing_subscriber;
 
 mod endpoints;
+mod entities;
 mod utils;
 
 #[tokio::main(flavor = "multi_thread")]
@@ -20,10 +23,11 @@ async fn main() {
             return;
         }
     };
+    let shared_state = Arc::new(state);
 
-    let router: Router<()> = endpoints::create_router().with_state(state.clone());
+    let router: Router<()> = endpoints::create_router().with_state(shared_state.clone());
 
-    let listener = tokio::net::TcpListener::bind(state.config.url.clone())
+    let listener = tokio::net::TcpListener::bind(shared_state.config.url.clone())
         .await
         .unwrap();
     axum::serve(listener, router).await.unwrap();

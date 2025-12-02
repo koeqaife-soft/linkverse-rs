@@ -1,7 +1,7 @@
 use axum::Router;
 
-use crate::utils::state::AppState;
+use crate::utils::state::ArcAppState;
 
-pub fn router() -> Router<AppState> {
+pub fn router() -> Router<ArcAppState> {
     Router::new()
 }

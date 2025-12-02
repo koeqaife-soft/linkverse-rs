@@ -5,6 +5,8 @@ use std::env;
 use std::sync::Arc;
 use thiserror::Error;
 
+use crate::utils::snowflake::SnowflakeGenerator;
+
 #[derive(Debug, Clone)]
 pub struct RedisConfig {
     pub cache_url: String,
@@ -27,8 +29,8 @@ pub struct Config {
     pub secret_refresh_key: String,
     pub signature_key: String,
     pub url: String,
-    pub server_id: i8,
-    pub total_servers: i8,
+    pub server_id: u8,
+    pub total_servers: u8,
     pub cdn_secret_key: String,
     pub cdn_secret_key_n: String,
     pub vapid_secret: String,
@@ -90,6 +92,7 @@ impl PostgresConfig {
 pub struct AppState {
     pub db_pool: Arc<PgPool>,
     pub config: Arc<Config>,
+    pub snowflake: Arc<SnowflakeGenerator>,
 
     pub cache_redis: Arc<RedisClient>,
     pub sessions_redis: Arc<RedisClient>,
@@ -136,6 +139,7 @@ impl AppState {
 
         Ok(AppState {
             db_pool: Arc::new(db_pool),
+            snowflake: Arc::new(SnowflakeGenerator::new(config.server_id)),
             config: Arc::new(config),
             cache_redis: Arc::new(cache_redis),
             sessions_redis: Arc::new(sessions_redis),
@@ -143,3 +147,5 @@ impl AppState {
         })
     }
 }
+
+pub type ArcAppState = Arc<AppState>;
