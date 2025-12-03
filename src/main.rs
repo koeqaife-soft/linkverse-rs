@@ -12,7 +12,7 @@ mod entities;
 mod services;
 mod utils;
 
-#[tokio::main(flavor = "multi_thread", worker_threads = 32)]
+#[tokio::main(flavor = "multi_thread")]
 async fn main() {
     dotenv().ok();
 
