@@ -1,6 +1,7 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::task_local;
+use tracing::warn;
 
 const EPOCH: u64 = 1_725_513_600_000;
 const COUNTER_BITS: u64 = 12;
@@ -29,7 +30,7 @@ impl SnowflakeGenerator {
     }
 
     pub async fn generate(&self) -> u64 {
-        todo!("Separate generator between worker threads");
+        // TODO: Separate generator between worker threads
 
         let tid = 0;
         let mut ts = Self::current_time_ms() - EPOCH;
