@@ -11,24 +11,6 @@ pub struct ApiResponseData<T> {
     error: Option<String>,
 }
 
-impl<T> ApiResponseData<T> {
-    pub fn ok(data: T) -> Self {
-        Self {
-            success: true,
-            data: Some(data),
-            error: None,
-        }
-    }
-
-    pub fn err(msg: &str) -> Self {
-        Self {
-            success: false,
-            data: None,
-            error: Some(msg.to_string()),
-        }
-    }
-}
-
 #[derive(Debug)]
 pub struct ApiResponse<T> {
     data: ApiResponseData<T>,
@@ -37,12 +19,20 @@ pub struct ApiResponse<T> {
 
 impl<T> ApiResponse<T> {
     pub fn ok(data: T, status: StatusCode) -> Self {
-        let data = ApiResponseData::ok(data);
+        let data = ApiResponseData {
+            success: true,
+            data: Some(data),
+            error: None,
+        };
         Self { data, status }
     }
 
     pub fn err(msg: &str, status: StatusCode) -> Self {
-        let data = ApiResponseData::err(msg);
+        let data = ApiResponseData {
+            success: false,
+            data: None,
+            error: Some(msg.to_string()),
+        };
         Self { data, status }
     }
 }
@@ -52,4 +42,12 @@ impl<T: Serialize> IntoResponse for ApiResponse<T> {
         let json = axum::Json(self.data);
         (self.status, json).into_response()
     }
+}
+
+pub fn ok<T>(data: T, status: StatusCode) -> ApiResponse<T> {
+    ApiResponse::<T>::ok(data, status)
+}
+
+pub fn err<T>(msg: &str, status: StatusCode) -> ApiResponse<T> {
+    ApiResponse::<T>::err(msg, status)
 }

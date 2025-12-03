@@ -1,3 +1,5 @@
+use crate::utils::response::err;
+
 use super::response::ApiResponse;
 use axum::http::StatusCode;
 use axum::{
@@ -21,14 +23,14 @@ where
         let Json(payload) = Json::<T>::from_request(req, &state).await.map_err(|_| {
             (
                 StatusCode::BAD_REQUEST,
-                ApiResponse::<()>::err("INCORRECT_DATA", StatusCode::BAD_REQUEST),
+                err("INCORRECT_DATA", StatusCode::BAD_REQUEST),
             )
         })?;
 
         payload.validate().map_err(|_| {
             (
                 StatusCode::UNPROCESSABLE_ENTITY,
-                ApiResponse::<()>::err("INCORRECT_DATA", StatusCode::BAD_REQUEST),
+                err("INCORRECT_DATA", StatusCode::BAD_REQUEST),
             )
         })?;
 
