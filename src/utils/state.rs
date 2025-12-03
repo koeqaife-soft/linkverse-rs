@@ -1,9 +1,10 @@
+use deadpool_postgres::{Manager, ManagerConfig, Pool, RecyclingMethod};
 use fred::clients::Client as RedisClient;
 use fred::prelude::{self, ClientLike};
-use sqlx::postgres::{PgConnectOptions, PgPool, PgPoolOptions};
 use std::env;
 use std::sync::Arc;
 use thiserror::Error;
+use tokio_postgres::{Config as PgConfig, NoTls};
 
 use crate::utils::snowflake::SnowflakeGenerator;
 
@@ -90,7 +91,7 @@ impl PostgresConfig {
 
 #[derive(Debug, Clone)]
 pub struct AppState {
-    pub db_pool: Arc<PgPool>,
+    pub db_pool: Arc<Pool>,
     pub config: Arc<Config>,
     pub snowflake: Arc<SnowflakeGenerator>,
 
@@ -102,7 +103,7 @@ pub struct AppState {
 #[derive(Error, Debug)]
 pub enum AppStateError {
     #[error("SQL error: {0}")]
-    Sql(#[from] sqlx::Error),
+    Sql(#[from] tokio_postgres::Error),
 
     #[error("Redis error: {0}")]
     Redis(#[from] fred::error::Error),
@@ -114,16 +115,23 @@ impl AppState {
         let postgres_config = PostgresConfig::from_env();
         let redis_config = RedisConfig::from_env();
 
-        let db_options = PgConnectOptions::new()
-            .host(&postgres_config.host)
-            .database(&postgres_config.database)
-            .password(&postgres_config.password)
-            .username(&postgres_config.user);
+        let mut pg_config = PgConfig::new();
+        pg_config.host(&postgres_config.host);
+        pg_config.user(&postgres_config.user);
+        pg_config.password(&postgres_config.password);
+        pg_config.dbname(&postgres_config.database);
 
-        let db_pool = PgPoolOptions::new()
-            .max_connections(postgres_config.connections)
-            .connect_with(db_options)
-            .await?;
+        let mgr = Manager::from_config(
+            pg_config,
+            NoTls,
+            ManagerConfig {
+                recycling_method: RecyclingMethod::Fast,
+            },
+        );
+        let db_pool = Pool::builder(mgr)
+            .max_size(postgres_config.connections as usize)
+            .build()
+            .unwrap();
 
         let cache_redis_config = prelude::Config::from_url(&redis_config.cache_url)?;
         let sessions_redis_config = prelude::Config::from_url(&redis_config.sessions_url)?;
