@@ -11,7 +11,7 @@ pub enum ResultError {
 }
 
 pub struct LazyConn<'a> {
-    pool: Pool,
+    pool: Arc<Pool>,
     client: Option<Object>,
     transaction: Option<Transaction<'a>>,
 }
@@ -19,7 +19,7 @@ pub struct LazyConn<'a> {
 pub type ArcLazyConn<'a> = Arc<Mutex<LazyConn<'a>>>;
 
 impl LazyConn<'_> {
-    pub fn new(pool: Pool) -> Arc<Self> {
+    pub fn new(pool: Arc<Pool>) -> Arc<Self> {
         Arc::new(Self {
             pool,
             client: None,
