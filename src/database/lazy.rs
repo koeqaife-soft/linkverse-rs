@@ -10,14 +10,6 @@ pub enum ResultError {
     QueryError(tokio_postgres::Error),
 }
 
-#[derive(Debug)]
-pub enum ContextError<E> {
-    Start(PoolError),
-    User(E),
-    Commit(Error),
-    Rollback(Error),
-}
-
 pub struct LazyConn<'a> {
     pool: Pool,
     client: Option<Object>,
