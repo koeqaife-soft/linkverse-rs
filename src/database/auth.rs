@@ -54,17 +54,17 @@ fn row_to_auth_user(row: &Row) -> AuthUser {
 }
 
 pub async fn get_auth_user(
-    user_id: String,
+    user_id: &String,
     conn: &mut LazyConn,
 ) -> Result<Option<AuthUser>, ResultError> {
-    get_user_by(conn, &user_id, "user_id = $1").await
+    get_user_by(conn, user_id, "user_id = $1").await
 }
 
 pub async fn get_user_by_email(
-    email: String,
+    email: &String,
     conn: &mut LazyConn,
 ) -> Result<Option<AuthUser>, ResultError> {
-    get_user_by(conn, &email, "email = $1").await
+    get_user_by(conn, email, "email = $1").await
 }
 
 pub async fn create_tokens(
@@ -103,7 +103,9 @@ pub async fn create_tokens(
         VALUES ($1, $2, $3)
         ",
         &[&user_id, &new_secret, &new_session_id],
-    );
+    )
+    .await
+    .map_err(ResultError::QueryError)?;
 
     Ok(Tokens { refresh, access })
 }
