@@ -16,7 +16,6 @@ pub struct LazyConn {
 }
 
 pub type ArcLazyConn = Arc<Mutex<LazyConn>>;
-pub type MutexLazyConn<'a> = MutexGuard<'a, LazyConn>;
 
 impl LazyConn {
     pub fn new(pool: Arc<Pool>) -> ArcLazyConn {
