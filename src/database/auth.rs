@@ -2,7 +2,7 @@ use crate::{
     database::conn::{LazyConn, ResultError},
     entities::user::AuthUser,
     utils::{
-        security::{generate_key, generate_token},
+        security::{generate_key, generate_token, store_password},
         state::ArcAppState,
         thread_state::generate_id,
     },
@@ -126,13 +126,40 @@ pub async fn email_exists(email: &String, conn: &mut LazyConn) -> Result<bool, R
     Ok(value.is_some())
 }
 
+/// Check username
+pub async fn username_exists(username: &String, conn: &mut LazyConn) -> Result<bool, ResultError> {
+    let db = conn.get_client().await?;
+
+    let value = db
+        .query_opt(
+            "
+            SELECT 1 FROM users
+            WHERE username = $1
+            LIMIT 1
+            ",
+            &[username],
+        )
+        .await?;
+    Ok(value.is_some())
+}
+
 /// Create new user
+/// Consider checking username and email existence before using this func
 pub async fn create_user(
     username: &String,
     email: &String,
     password: &String,
     tx: &mut Transaction<'_>,
-    state: ArcAppState,
 ) -> Result<String, ResultError> {
-    todo!();
+    let new_user_id = generate_id().to_string();
+    let password_hash = store_password(password);
+    tx.execute(
+        "
+        INSERT INTO users (user_id, username, email, password_hash)
+        VALUES ($1, $2, $3, $4)
+        ",
+        &[&new_user_id, username, email, &password_hash],
+    )
+    .await?;
+    Ok(new_user_id)
 }
