@@ -2,12 +2,37 @@ use std::sync::Arc;
 
 use deadpool_postgres::{Object, Pool, PoolError, Transaction};
 use tokio::sync::Mutex;
+use tracing::error;
+
+use crate::utils::response::AppError;
 
 #[derive(Debug)]
+#[allow(dead_code)]
 pub enum ResultError {
     PoolError(deadpool_postgres::PoolError),
     QueryError(tokio_postgres::Error),
     AnyhowError(anyhow::Error),
+}
+
+impl From<ResultError> for AppError {
+    fn from(err: ResultError) -> Self {
+        error!("Database error: {:?}", err);
+        AppError::Internal("INTERNAL_SERVER_ERROR".to_string())
+    }
+}
+
+impl From<deadpool_postgres::PoolError> for AppError {
+    fn from(err: deadpool_postgres::PoolError) -> Self {
+        error!("Pool error: {:?}", err);
+        AppError::Internal("INTERNAL_SERVER_ERROR".to_string())
+    }
+}
+
+impl From<tokio_postgres::Error> for AppError {
+    fn from(err: tokio_postgres::Error) -> Self {
+        error!("Tokio postgres error: {:?}", err);
+        AppError::Internal("INTERNAL_SERVER_ERROR".to_string())
+    }
 }
 
 pub struct LazyConn {

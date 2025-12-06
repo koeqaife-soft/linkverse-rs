@@ -32,9 +32,7 @@ async fn login(
     let mut conn = conn_unlocked.lock().await;
 
     // Getting user
-    let user_result = get_user_by_email(&payload.email, &mut conn)
-        .await
-        .map_err(log_and_convert)?;
+    let user_result = get_user_by_email(&payload.email, &mut conn).await?;
     if user_result.is_none() {
         return Err(AppError::NotFound("USER_NOT_FOUND".to_string()));
     }
@@ -47,11 +45,9 @@ async fn login(
     }
 
     // Generating tokens
-    let mut tx = conn.transaction().await.map_err(log_and_convert)?;
-    let tokens = create_tokens(user.user_id, &mut tx, state)
-        .await
-        .map_err(log_and_convert)?;
-    tx.commit().await.map_err(log_and_convert)?;
+    let mut tx = conn.transaction().await?;
+    let tokens = create_tokens(user.user_id, &mut tx, state).await?;
+    tx.commit().await?;
 
     return Ok(ok(tokens, StatusCode::OK));
 }
