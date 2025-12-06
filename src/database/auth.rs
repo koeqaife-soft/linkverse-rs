@@ -1,19 +1,27 @@
 use crate::{
-    database::lazy::{ArcLazyConn, ResultError},
+    database::lazy::{ArcLazyConn, LazyConn, MutexLazyConn, ResultError},
     entities::user::AuthUser,
+    utils::{
+        security::{generate_key, generate_token},
+        state::ArcAppState,
+    },
 };
+use deadpool_postgres::Transaction;
+use serde::Serialize;
 use tokio_postgres::Row;
 
+#[derive(Debug, Serialize)]
+pub struct Tokens {
+    refresh: String,
+    access: String,
+}
+
 async fn get_user_by(
-    conn: ArcLazyConn<'_>,
+    conn: &mut LazyConn,
     query_param: &(dyn tokio_postgres::types::ToSql + Sync),
     where_clause: &str,
-) -> Result<AuthUser, ResultError> {
-    let mut locked_conn = conn.lock().await;
-    let db = locked_conn
-        .get_client()
-        .await
-        .map_err(ResultError::PoolError)?;
+) -> Result<Option<AuthUser>, ResultError> {
+    let db = conn.get_client().await.map_err(ResultError::PoolError)?;
     let sql = format!(
         "
         SELECT username, user_id, email, password_hash,
@@ -26,11 +34,11 @@ async fn get_user_by(
     );
 
     let row = db
-        .query_one(&sql, &[query_param])
+        .query_opt(&sql, &[query_param])
         .await
         .map_err(ResultError::QueryError)?;
 
-    Ok(row_to_auth_user(&row))
+    Ok(row.map(|row| row_to_auth_user(&row)))
 }
 
 fn row_to_auth_user(row: &Row) -> AuthUser {
@@ -47,16 +55,55 @@ fn row_to_auth_user(row: &Row) -> AuthUser {
 
 pub async fn get_auth_user(
     user_id: String,
-    conn: ArcLazyConn<'_>,
-) -> Result<AuthUser, ResultError> {
+    conn: &mut LazyConn,
+) -> Result<Option<AuthUser>, ResultError> {
     get_user_by(conn, &user_id, "user_id = $1").await
 }
 
 pub async fn get_user_by_email(
     email: String,
-    conn: ArcLazyConn<'_>,
-) -> Result<AuthUser, ResultError> {
+    conn: &mut LazyConn,
+) -> Result<Option<AuthUser>, ResultError> {
     get_user_by(conn, &email, "email = $1").await
 }
 
-pub async fn create_auth_keys(user_id: String, conn: ArcLazyConn<'_>) {}
+pub async fn create_tokens(
+    user_id: String,
+    tx: &mut Transaction<'_>,
+    state: ArcAppState,
+) -> Result<Tokens, ResultError> {
+    let new_secret = generate_key(16);
+    let new_session_id = state.snowflake.generate().await.to_string();
+
+    let refresh = generate_token(
+        &user_id,
+        "refresh",
+        true,
+        &new_secret,
+        &new_session_id,
+        &state.config.signature_key,
+    )
+    .await
+    .map_err(ResultError::AnyhowError)?;
+
+    let access = generate_token(
+        &user_id,
+        "access",
+        false,
+        &new_secret,
+        &new_session_id,
+        &state.config.signature_key,
+    )
+    .await
+    .map_err(ResultError::AnyhowError)?;
+
+    tx.execute(
+        "
+        INSERT INTO auth_keys (user_id, token_secret, session_id)
+        VALUES ($1, $2, $3)
+        ",
+        &[&user_id, &new_secret, &new_session_id],
+    );
+
+    Ok(Tokens { refresh, access })
+}
