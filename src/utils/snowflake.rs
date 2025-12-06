@@ -1,7 +1,5 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
-use tokio::task_local;
-use tracing::warn;
 
 const EPOCH: u64 = 1_725_513_600_000;
 const COUNTER_BITS: u64 = 12;
