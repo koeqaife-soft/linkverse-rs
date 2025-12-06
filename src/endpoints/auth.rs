@@ -5,7 +5,7 @@ use validator::Validate;
 use crate::{
     database::{
         auth::{Tokens, create_tokens, get_user_by_email},
-        lazy::LazyConn,
+        conn::LazyConn,
     },
     utils::{
         response::{ApiResponse, AppError, log_and_convert, ok},

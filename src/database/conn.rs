@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use deadpool_postgres::{Object, Pool, PoolError, Transaction};
-use tokio::sync::{Mutex, MutexGuard};
+use tokio::sync::Mutex;
 
 #[derive(Debug)]
 pub enum ResultError {

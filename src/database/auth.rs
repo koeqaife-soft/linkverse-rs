@@ -1,5 +1,5 @@
 use crate::{
-    database::lazy::{LazyConn, ResultError},
+    database::conn::{LazyConn, ResultError},
     entities::user::AuthUser,
     utils::{
         security::{generate_key, generate_token},
