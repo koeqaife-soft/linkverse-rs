@@ -1,30 +1,26 @@
 use std::sync::Arc;
 
 use deadpool_postgres::{Object, Pool, PoolError, Transaction};
-use tokio::sync::Mutex;
-use tokio_postgres::Error;
+use tokio::sync::{Mutex, MutexGuard};
 
 #[derive(Debug)]
 pub enum ResultError {
     PoolError(deadpool_postgres::PoolError),
     QueryError(tokio_postgres::Error),
+    AnyhowError(anyhow::Error),
 }
 
-pub struct LazyConn<'a> {
+pub struct LazyConn {
     pool: Arc<Pool>,
     client: Option<Object>,
-    transaction: Option<Transaction<'a>>,
 }
 
-pub type ArcLazyConn<'a> = Arc<Mutex<LazyConn<'a>>>;
+pub type ArcLazyConn = Arc<Mutex<LazyConn>>;
+pub type MutexLazyConn<'a> = MutexGuard<'a, LazyConn>;
 
-impl LazyConn<'_> {
-    pub fn new(pool: Arc<Pool>) -> Arc<Self> {
-        Arc::new(Self {
-            pool,
-            client: None,
-            transaction: None,
-        })
+impl LazyConn {
+    pub fn new(pool: Arc<Pool>) -> ArcLazyConn {
+        Arc::new(Mutex::new(Self { pool, client: None }))
     }
 
     pub async fn get_client(&mut self) -> Result<&mut Object, PoolError> {
@@ -35,22 +31,8 @@ impl LazyConn<'_> {
         Ok(self.client.as_mut().unwrap())
     }
 
-    pub async fn with_transaction<F, Fut, T>(&mut self, f: F) -> Result<T, ResultError>
-    where
-        F: FnOnce(&mut Transaction<'_>) -> Fut,
-        Fut: Future<Output = Result<T, Error>>,
-    {
-        let client = self.get_client().await.map_err(ResultError::PoolError)?;
-        let mut tx = client
-            .transaction()
-            .await
-            .map_err(ResultError::QueryError)?;
-        let res = f(&mut tx).await;
-        if res.is_ok() {
-            tx.commit().await.map_err(ResultError::QueryError)?;
-        } else {
-            tx.rollback().await.map_err(ResultError::QueryError)?;
-        }
-        Ok(res.map_err(ResultError::QueryError)?)
+    pub async fn transaction(&mut self) -> Result<Transaction<'_>, PoolError> {
+        let client = self.get_client().await?;
+        Ok(client.transaction().await?)
     }
 }
