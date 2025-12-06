@@ -8,7 +8,7 @@ use crate::{
         conn::LazyConn,
     },
     utils::{
-        response::{ApiResponse, AppError, log_and_convert, ok},
+        response::{ApiResponse, AppError, ok},
         security::check_password,
         state::ArcAppState,
         validate::ValidatedJson,

@@ -82,11 +82,3 @@ pub fn ok<T>(data: T, status: StatusCode) -> ApiResponse<T> {
 pub fn err<T>(msg: &str, status: StatusCode) -> ApiResponse<T> {
     ApiResponse::<T>::err(msg, status)
 }
-
-pub fn log_and_convert<E>(err: E) -> AppError
-where
-    E: std::fmt::Debug,
-{
-    error!("Error: {:?}", err);
-    AppError::Internal("INTERNAL_SERVER_ERROR".to_string())
-}
