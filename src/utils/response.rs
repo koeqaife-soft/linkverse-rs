@@ -1,6 +1,8 @@
+use axum::Json;
 use axum::http::StatusCode;
-use axum::response::IntoResponse;
+use axum::response::{IntoResponse, Response};
 use serde::Serialize;
+use tracing::error;
 
 #[derive(Serialize, Debug)]
 pub struct ApiResponseData<T> {
@@ -44,10 +46,47 @@ impl<T: Serialize> IntoResponse for ApiResponse<T> {
     }
 }
 
+#[derive(Debug)]
+pub enum AppError {
+    NotFound(String),
+    Unauthorized(String),
+    BadRequest(String),
+    Internal(String),
+    Forbidden(String),
+}
+
+impl IntoResponse for AppError {
+    fn into_response(self) -> Response {
+        let (status, error_message) = match &self {
+            AppError::NotFound(msg) => (StatusCode::NOT_FOUND, msg.clone()),
+            AppError::Unauthorized(msg) => (StatusCode::UNAUTHORIZED, msg.clone()),
+            AppError::BadRequest(msg) => (StatusCode::BAD_REQUEST, msg.clone()),
+            AppError::Internal(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg.clone()),
+            AppError::Forbidden(msg) => (StatusCode::FORBIDDEN, msg.clone()),
+        };
+
+        let body = Json(ApiResponseData::<()> {
+            success: false,
+            data: None,
+            error: Some(error_message),
+        });
+
+        (status, body).into_response()
+    }
+}
+
 pub fn ok<T>(data: T, status: StatusCode) -> ApiResponse<T> {
     ApiResponse::<T>::ok(data, status)
 }
 
 pub fn err<T>(msg: &str, status: StatusCode) -> ApiResponse<T> {
     ApiResponse::<T>::err(msg, status)
+}
+
+pub fn log_and_convert<E>(err: E) -> AppError
+where
+    E: std::fmt::Debug,
+{
+    error!("Error: {:?}", err);
+    AppError::Internal("INTERNAL_SERVER_ERROR".to_string())
 }
