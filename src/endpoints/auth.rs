@@ -1,4 +1,5 @@
-use axum::{Router, extract::State, http::StatusCode, routing::post};
+use axum::{Json, Router, extract::State, http::StatusCode, routing::post};
+use axum_valid::Valid;
 use serde::Deserialize;
 use validator::Validate;
 
@@ -11,11 +12,10 @@ use crate::{
         response::{ApiResponse, AppError, log_and_convert, ok},
         security::check_password,
         state::ArcAppState,
-        validate::ValidatedJson,
     },
 };
 
-#[derive(Deserialize, Validate)]
+#[derive(Debug, Deserialize, Validate)]
 struct LoginPayload {
     #[validate(length(min = 8))]
     password: String,
@@ -25,14 +25,14 @@ struct LoginPayload {
 }
 
 async fn login(
-    ValidatedJson(payload): ValidatedJson<LoginPayload>,
     State(state): State<ArcAppState>,
+    Valid(Json(payload)): Valid<Json<LoginPayload>>,
 ) -> Result<ApiResponse<Tokens>, AppError> {
     let conn_unlocked = LazyConn::new(state.db_pool.clone());
     let mut conn = conn_unlocked.lock().await;
 
     // Getting user
-    let user_result = get_user_by_email(payload.email, &mut conn)
+    let user_result = get_user_by_email(&payload.email, &mut conn)
         .await
         .map_err(log_and_convert)?;
     if user_result.is_none() {
@@ -57,5 +57,5 @@ async fn login(
 }
 
 pub fn router() -> Router<ArcAppState> {
-    Router::new()
+    Router::new().route("/login", post(login))
 }
