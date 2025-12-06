@@ -4,6 +4,7 @@ use crate::{
     utils::{
         security::{generate_key, generate_token},
         state::ArcAppState,
+        thread_state::generate_id,
     },
 };
 use deadpool_postgres::Transaction;
@@ -22,7 +23,7 @@ async fn get_user_by(
     query_param: &(dyn tokio_postgres::types::ToSql + Sync),
     where_clause: &str,
 ) -> Result<Option<AuthUser>, ResultError> {
-    let db = conn.get_client().await.map_err(ResultError::PoolError)?;
+    let db = conn.get_client().await?;
     let sql = format!(
         "
         SELECT username, user_id, email, password_hash,
@@ -34,10 +35,7 @@ async fn get_user_by(
         where_clause
     );
 
-    let row = db
-        .query_opt(&sql, &[query_param])
-        .await
-        .map_err(ResultError::QueryError)?;
+    let row = db.query_opt(&sql, &[query_param]).await?;
 
     Ok(row.map(|row| row_to_auth_user(&row)))
 }
@@ -77,7 +75,7 @@ pub async fn create_tokens(
     state: ArcAppState,
 ) -> Result<Tokens, ResultError> {
     let new_secret = generate_key(16);
-    let new_session_id = state.snowflake.generate().await.to_string();
+    let new_session_id = generate_id().to_string();
 
     let refresh = generate_token(
         &user_id,
@@ -87,8 +85,7 @@ pub async fn create_tokens(
         &new_session_id,
         &state.config.signature_key,
     )
-    .await
-    .map_err(ResultError::AnyhowError)?;
+    .await?;
 
     let access = generate_token(
         &user_id,
@@ -98,8 +95,7 @@ pub async fn create_tokens(
         &new_session_id,
         &state.config.signature_key,
     )
-    .await
-    .map_err(ResultError::AnyhowError)?;
+    .await?;
 
     tx.execute(
         "
@@ -108,8 +104,35 @@ pub async fn create_tokens(
         ",
         &[&user_id, &new_secret, &new_session_id],
     )
-    .await
-    .map_err(ResultError::QueryError)?;
+    .await?;
 
     Ok(Tokens { refresh, access })
+}
+
+/// Check if user with email already exists
+pub async fn email_exists(email: &String, conn: &mut LazyConn) -> Result<bool, ResultError> {
+    let db = conn.get_client().await?;
+
+    let value = db
+        .query_opt(
+            "
+            SELECT 1 FROM users
+            WHERE email = $1 OR pending_email = $1
+            LIMIT 1
+            ",
+            &[email],
+        )
+        .await?;
+    Ok(value.is_some())
+}
+
+/// Create new user
+pub async fn create_user(
+    username: &String,
+    email: &String,
+    password: &String,
+    tx: &mut Transaction<'_>,
+    state: ArcAppState,
+) -> Result<String, ResultError> {
+    todo!();
 }
