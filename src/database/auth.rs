@@ -1,5 +1,5 @@
 use crate::{
-    database::lazy::{ArcLazyConn, LazyConn, MutexLazyConn, ResultError},
+    database::lazy::{LazyConn, ResultError},
     entities::user::AuthUser,
     utils::{
         security::{generate_key, generate_token},
@@ -16,6 +16,7 @@ pub struct Tokens {
     access: String,
 }
 
+/// Getting user using where_clause, private but used in public funcs
 async fn get_user_by(
     conn: &mut LazyConn,
     query_param: &(dyn tokio_postgres::types::ToSql + Sync),
@@ -53,6 +54,7 @@ fn row_to_auth_user(row: &Row) -> AuthUser {
     }
 }
 
+/// Get auth user by user_id
 pub async fn get_auth_user(
     user_id: &String,
     conn: &mut LazyConn,
@@ -60,6 +62,7 @@ pub async fn get_auth_user(
     get_user_by(conn, user_id, "user_id = $1").await
 }
 
+/// Get auth user by email
 pub async fn get_user_by_email(
     email: &String,
     conn: &mut LazyConn,
@@ -67,6 +70,7 @@ pub async fn get_user_by_email(
     get_user_by(conn, email, "email = $1").await
 }
 
+/// Creates refresh and access tokens for user_id
 pub async fn create_tokens(
     user_id: String,
     tx: &mut Transaction<'_>,
