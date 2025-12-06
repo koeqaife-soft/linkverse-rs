@@ -15,43 +15,48 @@ use crate::{
     },
 };
 
-#[derive(Debug, Deserialize, Validate)]
-struct LoginPayload {
-    #[validate(length(min = 8))]
-    password: String,
+/// Login endpoint
+mod login {
+    use super::*;
 
-    #[validate(email)]
-    email: String,
-}
+    #[derive(Debug, Deserialize, Validate)]
+    pub struct Payload {
+        #[validate(length(min = 8))]
+        password: String,
 
-async fn login(
-    State(state): State<ArcAppState>,
-    ValidatedJson(payload): ValidatedJson<LoginPayload>,
-) -> Result<ApiResponse<Tokens>, AppError> {
-    let conn_unlocked = LazyConn::new(state.db_pool.clone());
-    let mut conn = conn_unlocked.lock().await;
-
-    // Getting user
-    let user_result = get_user_by_email(&payload.email, &mut conn).await?;
-    if user_result.is_none() {
-        return Err(AppError::NotFound("USER_NOT_FOUND".to_string()));
+        #[validate(email)]
+        email: String,
     }
 
-    // Checking password
-    let user = user_result.unwrap();
-    let correct = check_password(&user.password_hash, &payload.password);
-    if !correct {
-        return Err(AppError::Unauthorized("INCORRECT_PASSWORD".to_string()));
+    pub async fn handler(
+        State(state): State<ArcAppState>,
+        ValidatedJson(payload): ValidatedJson<Payload>,
+    ) -> Result<ApiResponse<Tokens>, AppError> {
+        let conn_unlocked = LazyConn::new(state.db_pool.clone());
+        let mut conn = conn_unlocked.lock().await;
+
+        // Getting user
+        let user_result = get_user_by_email(&payload.email, &mut conn).await?;
+        if user_result.is_none() {
+            return Err(AppError::NotFound("USER_NOT_FOUND".to_string()));
+        }
+
+        // Checking password
+        let user = user_result.unwrap();
+        let correct = check_password(&user.password_hash, &payload.password);
+        if !correct {
+            return Err(AppError::Unauthorized("INCORRECT_PASSWORD".to_string()));
+        }
+
+        // Generating tokens
+        let mut tx = conn.transaction().await?;
+        let tokens = create_tokens(user.user_id, &mut tx, state).await?;
+        tx.commit().await?;
+
+        return Ok(ok(tokens, StatusCode::OK));
     }
-
-    // Generating tokens
-    let mut tx = conn.transaction().await?;
-    let tokens = create_tokens(user.user_id, &mut tx, state).await?;
-    tx.commit().await?;
-
-    return Ok(ok(tokens, StatusCode::OK));
 }
 
 pub fn router() -> Router<ArcAppState> {
-    Router::new().route("/login", post(login))
+    Router::new().route("/login", post(login::handler))
 }
