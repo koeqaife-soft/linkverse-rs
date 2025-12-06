@@ -14,6 +14,7 @@ pub enum ResultError {
     AnyhowError(anyhow::Error),
 }
 
+// App errors (API)
 impl From<ResultError> for AppError {
     fn from(err: ResultError) -> Self {
         error!("Database error: {:?}", err);
@@ -32,6 +33,25 @@ impl From<tokio_postgres::Error> for AppError {
     fn from(err: tokio_postgres::Error) -> Self {
         error!("Tokio postgres error: {:?}", err);
         AppError::Internal("INTERNAL_SERVER_ERROR".to_string())
+    }
+}
+
+// Result errors
+impl From<anyhow::Error> for ResultError {
+    fn from(err: anyhow::Error) -> Self {
+        Self::AnyhowError(err)
+    }
+}
+
+impl From<deadpool_postgres::PoolError> for ResultError {
+    fn from(err: deadpool_postgres::PoolError) -> Self {
+        Self::PoolError(err)
+    }
+}
+
+impl From<tokio_postgres::Error> for ResultError {
+    fn from(err: tokio_postgres::Error) -> Self {
+        Self::QueryError(err)
     }
 }
 
