@@ -93,7 +93,6 @@ impl PostgresConfig {
 pub struct AppState {
     pub db_pool: Arc<Pool>,
     pub config: Arc<Config>,
-    pub snowflake: Arc<SnowflakeGenerator>,
 
     pub cache_redis: Arc<RedisClient>,
     pub sessions_redis: Arc<RedisClient>,
@@ -147,7 +146,6 @@ impl AppState {
 
         Ok(AppState {
             db_pool: Arc::new(db_pool),
-            snowflake: Arc::new(SnowflakeGenerator::new(config.server_id)),
             config: Arc::new(config),
             cache_redis: Arc::new(cache_redis),
             sessions_redis: Arc::new(sessions_redis),

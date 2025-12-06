@@ -13,14 +13,16 @@ pub struct SnowflakeGenerator {
     last_timestamp: AtomicU64,
     counter: AtomicU64,
     server_id: u8,
+    worker_id: u64,
 }
 
 impl SnowflakeGenerator {
-    pub fn new(server_id: u8) -> Self {
+    pub fn new(server_id: u8, worker_id: u64) -> Self {
         Self {
             last_timestamp: AtomicU64::new(0),
             counter: AtomicU64::new(0),
             server_id,
+            worker_id,
         }
     }
 
@@ -29,10 +31,7 @@ impl SnowflakeGenerator {
         now.as_millis() as u64
     }
 
-    pub async fn generate(&self) -> u64 {
-        // TODO: Separate generator between worker threads
-
-        let tid = 0;
+    pub fn generate(&self) -> u64 {
         let mut ts = Self::current_time_ms() - EPOCH;
 
         let mut counter: u64;
@@ -55,7 +54,7 @@ impl SnowflakeGenerator {
         }
 
         (ts << (COUNTER_BITS + SID_BITS + PID_BITS))
-            | ((tid & ((1 << PID_BITS) - 1)) << (COUNTER_BITS + SID_BITS))
+            | ((self.worker_id & ((1 << PID_BITS) - 1)) << (COUNTER_BITS + SID_BITS))
             | ((self.server_id as u64 & ((1 << SID_BITS) - 1)) << COUNTER_BITS)
             | counter
     }
