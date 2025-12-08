@@ -2,7 +2,6 @@ use axum::Json;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use serde::Serialize;
-use tracing::error;
 
 #[derive(Serialize, Debug)]
 pub struct ApiResponseData<T> {
@@ -25,15 +24,6 @@ impl<T> ApiResponse<T> {
             success: true,
             data: Some(data),
             error: None,
-        };
-        Self { data, status }
-    }
-
-    pub fn err(msg: &str, status: StatusCode) -> Self {
-        let data = ApiResponseData {
-            success: false,
-            data: None,
-            error: Some(msg.to_string()),
         };
         Self { data, status }
     }
