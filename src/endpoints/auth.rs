@@ -8,10 +8,10 @@ use crate::{
         conn::LazyConn,
     },
     utils::{
-        response::{ApiResponse, AppError, ok},
+        response::{ApiResponse, AppError, FuncError, ok},
         security::check_password,
         state::ArcAppState,
-        validate::ValidatedJson,
+        validate::{ValidatedJson, validate_username},
     },
 };
 
@@ -36,16 +36,14 @@ mod login {
         let mut conn = conn_unlocked.lock().await;
 
         // Getting user
-        let user_result = get_user_by_email(&payload.email, &mut conn).await?;
-        if user_result.is_none() {
-            return Err(AppError::NotFound("USER_NOT_FOUND".to_string()));
-        }
+        let user = get_user_by_email(&payload.email, &mut conn)
+            .await?
+            .ok_or(FuncError::UserNotFound)?;
 
         // Checking password
-        let user = user_result.unwrap();
         let correct = check_password(&user.password_hash, &payload.password);
         if !correct {
-            return Err(AppError::Unauthorized("INCORRECT_PASSWORD".to_string()));
+            return Err(FuncError::IncorrectPassword.into());
         }
 
         // Generating tokens
@@ -57,6 +55,59 @@ mod login {
     }
 }
 
+/// Register endpoint
+mod register {
+    use crate::database::auth::{create_user, email_exists, username_exists};
+
+    use super::*;
+
+    #[derive(Debug, Deserialize, Validate)]
+    pub struct Payload {
+        #[validate(length(min = 8))]
+        password: String,
+
+        #[validate(email)]
+        email: String,
+
+        #[validate(custom(function = "validate_username"))]
+        username: String,
+    }
+
+    pub async fn handler(
+        State(state): State<ArcAppState>,
+        ValidatedJson(payload): ValidatedJson<Payload>,
+    ) -> Result<ApiResponse<Tokens>, AppError> {
+        let conn_unlocked = LazyConn::new(state.db_pool.clone());
+        let mut conn = conn_unlocked.lock().await;
+
+        // Check existence of email
+        if email_exists(&payload.email, &mut conn).await? {
+            return Err(FuncError::UserAlreadyExists.into());
+        }
+
+        // Check existence of username
+        if username_exists(&payload.username, &mut conn).await? {
+            return Err(FuncError::UsernameExists.into());
+        }
+
+        // Creating new user and tokens
+        let mut tx = conn.transaction().await?;
+        let user_id = create_user(
+            &payload.username,
+            &payload.email,
+            &payload.password,
+            &mut tx,
+        )
+        .await?;
+        let tokens = create_tokens(user_id, &mut tx, state).await?;
+        tx.commit().await?;
+
+        Ok(ok(tokens, StatusCode::OK))
+    }
+}
+
 pub fn router() -> Router<ArcAppState> {
-    Router::new().route("/login", post(login::handler))
+    Router::new()
+        .route("/login", post(login::handler))
+        .route("/register", post(register::handler))
 }
