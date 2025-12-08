@@ -1,4 +1,4 @@
-use crate::utils::response::err;
+use crate::utils::response::{AppError, FuncError, err};
 
 use super::response::ApiResponse;
 use axum::http::StatusCode;
@@ -17,16 +17,14 @@ where
     B: Send + Sync + 'static,
     T: DeserializeOwned + Validate,
 {
-    type Rejection = ApiResponse<()>;
+    type Rejection = AppError;
 
     async fn from_request(req: Request, state: &B) -> Result<Self, Self::Rejection> {
         let Json(payload) = Json::<T>::from_request(req, &state)
             .await
-            .map_err(|_| err("INCORRECT_DATA", StatusCode::BAD_REQUEST))?;
+            .map_err(|_| FuncError::IncorrectData)?;
 
-        payload
-            .validate()
-            .map_err(|_| err("INCORRECT_DATA", StatusCode::UNPROCESSABLE_ENTITY))?;
+        payload.validate().map_err(|_| FuncError::IncorrectData)?;
 
         Ok(ValidatedJson(payload))
     }

@@ -81,6 +81,7 @@ impl IntoResponse for AppError {
 pub enum FuncError {
     UserNotFound,
     IncorrectPassword,
+    IncorrectData,
     UserAlreadyExists,
     UsernameExists,
 }
@@ -90,6 +91,7 @@ impl From<FuncError> for AppError {
         match err {
             FuncError::UserNotFound => AppError::NotFound("USER_NOT_FOUND".into()),
             FuncError::IncorrectPassword => AppError::Unauthorized("INCORRECT_PASSWORD".into()),
+            FuncError::IncorrectData => AppError::BadRequest("IncorrectData".into()),
             FuncError::UserAlreadyExists => AppError::Conflict("USER_ALREADY_EXISTS".into()),
             FuncError::UsernameExists => AppError::Conflict("USERNAME_EXISTS".into()),
         }
