@@ -60,11 +60,9 @@ pub struct LazyConn {
     client: Option<Object>,
 }
 
-pub type ArcLazyConn = Arc<Mutex<LazyConn>>;
-
 impl LazyConn {
-    pub fn new(pool: Arc<Pool>) -> ArcLazyConn {
-        Arc::new(Mutex::new(Self { pool, client: None }))
+    pub fn new(pool: Arc<Pool>) -> Self {
+        Self { pool, client: None }
     }
 
     pub async fn get_client(&mut self) -> Result<&mut Object, PoolError> {

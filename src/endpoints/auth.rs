@@ -32,8 +32,7 @@ mod login {
         State(state): State<ArcAppState>,
         ValidatedJson(payload): ValidatedJson<Payload>,
     ) -> Result<ApiResponse<Tokens>, AppError> {
-        let conn_unlocked = LazyConn::new(state.db_pool.clone());
-        let mut conn = conn_unlocked.lock().await;
+        let mut conn = LazyConn::new(state.db_pool.clone());
 
         // Getting user
         let user = get_user_by_email(&payload.email, &mut conn)
@@ -77,8 +76,7 @@ mod register {
         State(state): State<ArcAppState>,
         ValidatedJson(payload): ValidatedJson<Payload>,
     ) -> Result<ApiResponse<Tokens>, AppError> {
-        let conn_unlocked = LazyConn::new(state.db_pool.clone());
-        let mut conn = conn_unlocked.lock().await;
+        let mut conn = LazyConn::new(state.db_pool.clone());
 
         // Check existence of email
         if email_exists(&payload.email, &mut conn).await? {
