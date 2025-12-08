@@ -53,6 +53,7 @@ pub enum AppError {
     BadRequest(String),
     Internal(String),
     Forbidden(String),
+    Conflict(String),
 }
 
 impl IntoResponse for AppError {
@@ -63,6 +64,7 @@ impl IntoResponse for AppError {
             AppError::BadRequest(msg) => (StatusCode::BAD_REQUEST, msg.clone()),
             AppError::Internal(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg.clone()),
             AppError::Forbidden(msg) => (StatusCode::FORBIDDEN, msg.clone()),
+            AppError::Conflict(msg) => (StatusCode::CONFLICT, msg.clone()),
         };
 
         let body = Json(ApiResponseData::<()> {
@@ -72,6 +74,25 @@ impl IntoResponse for AppError {
         });
 
         (status, body).into_response()
+    }
+}
+
+#[derive(Debug)]
+pub enum FuncError {
+    UserNotFound,
+    IncorrectPassword,
+    UserAlreadyExists,
+    UsernameExists,
+}
+
+impl From<FuncError> for AppError {
+    fn from(err: FuncError) -> Self {
+        match err {
+            FuncError::UserNotFound => AppError::NotFound("USER_NOT_FOUND".into()),
+            FuncError::IncorrectPassword => AppError::Unauthorized("INCORRECT_PASSWORD".into()),
+            FuncError::UserAlreadyExists => AppError::Conflict("USER_ALREADY_EXISTS".into()),
+            FuncError::UsernameExists => AppError::Conflict("USERNAME_EXISTS".into()),
+        }
     }
 }
 
