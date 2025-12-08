@@ -1,7 +1,5 @@
-use crate::utils::response::{AppError, FuncError, err};
+use crate::utils::response::{AppError, FuncError};
 
-use super::response::ApiResponse;
-use axum::http::StatusCode;
 use axum::{
     Json,
     extract::{FromRequest, Request},
