@@ -98,10 +98,6 @@ impl From<FuncError> for AppError {
     }
 }
 
-pub fn ok<T>(data: T, status: StatusCode) -> ApiResponse<T> {
+pub fn response<T>(data: T, status: StatusCode) -> ApiResponse<T> {
     ApiResponse::<T>::ok(data, status)
-}
-
-pub fn err<T>(msg: &str, status: StatusCode) -> ApiResponse<T> {
-    ApiResponse::<T>::err(msg, status)
 }

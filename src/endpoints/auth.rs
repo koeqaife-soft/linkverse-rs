@@ -8,7 +8,7 @@ use crate::{
         conn::LazyConn,
     },
     utils::{
-        response::{ApiResponse, AppError, FuncError, ok},
+        response::{ApiResponse, AppError, FuncError, response},
         security::check_password,
         state::ArcAppState,
         validate::{ValidatedJson, validate_username},
@@ -50,7 +50,7 @@ mod login {
         let tokens = create_tokens(user.user_id, &mut tx, state).await?;
         tx.commit().await?;
 
-        return Ok(ok(tokens, StatusCode::OK));
+        return Ok(response(tokens, StatusCode::OK));
     }
 }
 
@@ -100,7 +100,7 @@ mod register {
         let tokens = create_tokens(user_id, &mut tx, state).await?;
         tx.commit().await?;
 
-        Ok(ok(tokens, StatusCode::OK))
+        Ok(response(tokens, StatusCode::OK))
     }
 }
 
