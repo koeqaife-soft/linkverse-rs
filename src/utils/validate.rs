@@ -17,22 +17,16 @@ where
     B: Send + Sync + 'static,
     T: DeserializeOwned + Validate,
 {
-    type Rejection = (StatusCode, ApiResponse<()>);
+    type Rejection = ApiResponse<()>;
 
     async fn from_request(req: Request, state: &B) -> Result<Self, Self::Rejection> {
-        let Json(payload) = Json::<T>::from_request(req, &state).await.map_err(|_| {
-            (
-                StatusCode::BAD_REQUEST,
-                err("INCORRECT_DATA", StatusCode::BAD_REQUEST),
-            )
-        })?;
+        let Json(payload) = Json::<T>::from_request(req, &state)
+            .await
+            .map_err(|_| err("INCORRECT_DATA", StatusCode::BAD_REQUEST))?;
 
-        payload.validate().map_err(|_| {
-            (
-                StatusCode::UNPROCESSABLE_ENTITY,
-                err("INCORRECT_DATA", StatusCode::BAD_REQUEST),
-            )
-        })?;
+        payload
+            .validate()
+            .map_err(|_| err("INCORRECT_DATA", StatusCode::UNPROCESSABLE_ENTITY))?;
 
         Ok(ValidatedJson(payload))
     }
