@@ -8,7 +8,7 @@ use axum::{
 };
 use regex::Regex;
 use serde::de::DeserializeOwned;
-use validator::Validate;
+use validator::{Validate, ValidationError};
 
 pub struct ValidatedJson<T>(pub T);
 
@@ -38,15 +38,15 @@ where
     }
 }
 
-fn validate_username(nickname: &str) -> bool {
+pub fn validate_username(nickname: &str) -> Result<(), ValidationError> {
     let re = Regex::new(r"^[A-Za-z0-9._]+$").unwrap();
     if !re.is_match(nickname) {
-        return false;
+        return Err(ValidationError::new("invalid_username"));
     }
 
     if nickname.contains("..") || nickname.contains("__") {
-        return false;
+        return Err(ValidationError::new("invalid_username"));
     }
 
-    true
+    Ok(())
 }
