@@ -163,3 +163,27 @@ pub async fn create_user(
     .await?;
     Ok(new_user_id)
 }
+
+/// Check user session secret
+pub async fn check_session_secret(
+    user_id: &String,
+    session_id: &String,
+    secret: &String,
+    conn: &mut LazyConn,
+) -> Result<bool, ResultError> {
+    let db = conn.get_client().await?;
+
+    let value = db
+        .query_opt(
+            "
+            SELECT 1 FROM auth_keys
+            WHERE user_id = $1
+            AND session_id = $2
+            AND token_secret = $3
+            LIMIT 1
+            ",
+            &[user_id, session_id, secret],
+        )
+        .await?;
+    Ok(value.is_some())
+}

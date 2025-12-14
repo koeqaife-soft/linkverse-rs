@@ -1,4 +1,9 @@
-use axum::{Router, extract::State, http::StatusCode, routing::post};
+use axum::{
+    Router,
+    extract::State,
+    http::StatusCode,
+    routing::{get, post},
+};
 use serde::Deserialize;
 use validator::Validate;
 
@@ -40,7 +45,10 @@ mod login {
             .ok_or(FuncError::UserNotFound)?;
 
         // Checking password
-        let correct = check_password(&user.password_hash, &payload.password);
+        let correct = check_password(
+            &user.password_hash.unwrap_or("".to_string()),
+            &payload.password,
+        );
         if !correct {
             return Err(FuncError::IncorrectPassword.into());
         }
@@ -104,8 +112,67 @@ mod register {
     }
 }
 
+mod check {
+    use axum::extract::Query;
+
+    use super::*;
+    use crate::database::auth::{email_exists, username_exists};
+
+    #[derive(Debug, Deserialize)]
+    pub struct Params {
+        r#type: String,
+        value: String,
+    }
+
+    pub async fn handler(
+        State(state): State<ArcAppState>,
+        Query(params): Query<Params>,
+    ) -> Result<StatusCode, AppError> {
+        let mut conn = LazyConn::new(state.db_pool.clone());
+
+        // Check existence of email
+        if params.r#type == "email" && email_exists(&params.value, &mut conn).await? {
+            return Err(FuncError::UserAlreadyExists.into());
+        }
+
+        // Check existence of username
+        if params.r#type == "username" {
+            if !validate_username(&params.value).is_ok() {
+                return Err(FuncError::IncorrectData.into());
+            }
+            if username_exists(&params.value, &mut conn).await? {
+                return Err(FuncError::UsernameExists.into());
+            }
+        }
+
+        Ok(StatusCode::NO_CONTENT)
+    }
+}
+
+mod me {
+    use crate::{
+        database::auth::get_auth_user, entities::user::AuthUser, extractors::auth::AuthSession,
+    };
+
+    use super::*;
+
+    pub async fn handler(
+        session: AuthSession,
+        State(state): State<ArcAppState>,
+    ) -> Result<ApiResponse<AuthUser>, AppError> {
+        let mut conn = LazyConn::new(state.db_pool.clone());
+        let user = get_auth_user(&session.user_id, &mut conn)
+            .await?
+            .ok_or(FuncError::UserNotFound)?;
+
+        Ok(response(user, StatusCode::OK))
+    }
+}
+
 pub fn router() -> Router<ArcAppState> {
     Router::new()
         .route("/login", post(login::handler))
         .route("/register", post(register::handler))
+        .route("/check", get(check::handler))
+        .route("/me", get(me::handler))
 }

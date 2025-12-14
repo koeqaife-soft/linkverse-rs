@@ -74,6 +74,10 @@ pub enum FuncError {
     IncorrectData,
     UserAlreadyExists,
     UsernameExists,
+    InternalServerError,
+    Unauthorized,
+    ExpiredToken,
+    InvalidToken,
 }
 
 impl From<FuncError> for AppError {
@@ -84,6 +88,10 @@ impl From<FuncError> for AppError {
             FuncError::IncorrectData => AppError::BadRequest("INCORRECT_DATA".into()),
             FuncError::UserAlreadyExists => AppError::Conflict("USER_ALREADY_EXISTS".into()),
             FuncError::UsernameExists => AppError::Conflict("USERNAME_EXISTS".into()),
+            FuncError::InternalServerError => AppError::Internal("INTERNAL_SERVER_ERROR".into()),
+            FuncError::Unauthorized => AppError::Unauthorized("UNAUTHORIZED".into()),
+            FuncError::ExpiredToken => AppError::Unauthorized("EXPIRED_TOKEN".into()),
+            FuncError::InvalidToken => AppError::Unauthorized("INVALID_TOKEN".into()),
         }
     }
 }

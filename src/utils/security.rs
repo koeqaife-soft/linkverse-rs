@@ -57,12 +57,12 @@ pub fn check_password(stored: &str, password: &str) -> bool {
 
 #[derive(Debug, Serialize)]
 pub struct DecodedToken {
-    user_id: String,
-    is_expired: bool,
-    expiration_timestamp: u64,
-    secret: String,
-    key_type: String,
-    session_id: String,
+    pub user_id: String,
+    pub is_expired: bool,
+    pub expiration_timestamp: u64,
+    pub secret: String,
+    pub key_type: String,
+    pub session_id: String,
 }
 
 fn hmac_sha256_hex(message: &str, signature_key: &str) -> String {
@@ -109,7 +109,7 @@ pub async fn generate_token(
     Ok(token)
 }
 
-pub async fn decode_token(
+pub fn decode_token(
     token: &str,
     verify_type: Option<String>,
     signature_key: &str,

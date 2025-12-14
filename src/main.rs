@@ -9,6 +9,7 @@ use tracing_subscriber;
 mod database;
 mod endpoints;
 mod entities;
+mod extractors;
 mod services;
 mod utils;
 

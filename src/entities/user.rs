@@ -6,7 +6,8 @@ pub struct AuthUser {
     pub username: String,
     pub user_id: String,
     pub email: String,
-    pub password_hash: String,
+    #[serde(skip_serializing)]
+    pub password_hash: Option<String>,
     pub email_verified: Option<bool>,
     pub pending_email: Option<String>,
     pub pending_email_until: Option<i64>,
