@@ -37,10 +37,10 @@ async fn get_user_by(
 
     let row = db.query_opt(&sql, &[query_param]).await?;
 
-    Ok(row.map(|row| row_to_auth_user(&row)))
+    Ok(row.map(row_to_auth_user))
 }
 
-fn row_to_auth_user(row: &Row) -> AuthUser {
+fn row_to_auth_user(row: Row) -> AuthUser {
     AuthUser {
         username: row.get("username"),
         user_id: row.get("user_id"),
