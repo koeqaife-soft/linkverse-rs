@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use deadpool_postgres::{Object, Pool, PoolError, Transaction};
-use tokio::sync::Mutex;
 use tracing::error;
 
 use crate::utils::response::AppError;
@@ -77,4 +76,11 @@ impl LazyConn {
         let client = self.get_client().await?;
         Ok(client.transaction().await?)
     }
+}
+
+#[macro_export]
+macro_rules! get_conn {
+    ($state:expr) => {
+        LazyConn::new($state.db_pool.clone())
+    };
 }

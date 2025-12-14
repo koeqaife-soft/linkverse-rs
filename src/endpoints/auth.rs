@@ -12,6 +12,7 @@ use crate::{
         auth::{Tokens, create_tokens, get_user_by_email},
         conn::LazyConn,
     },
+    get_conn,
     utils::{
         response::{ApiResponse, AppError, FuncError, response},
         security::check_password,
@@ -37,7 +38,7 @@ mod login {
         State(state): State<ArcAppState>,
         ValidatedJson(payload): ValidatedJson<Payload>,
     ) -> Result<ApiResponse<Tokens>, AppError> {
-        let mut conn = LazyConn::new(state.db_pool.clone());
+        let mut conn = get_conn!(state);
 
         // Getting user
         let user = get_user_by_email(&payload.email, &mut conn)
@@ -84,7 +85,7 @@ mod register {
         State(state): State<ArcAppState>,
         ValidatedJson(payload): ValidatedJson<Payload>,
     ) -> Result<ApiResponse<Tokens>, AppError> {
-        let mut conn = LazyConn::new(state.db_pool.clone());
+        let mut conn = get_conn!(state);
 
         // Check existence of email
         if email_exists(&payload.email, &mut conn).await? {
@@ -128,7 +129,7 @@ mod check {
         State(state): State<ArcAppState>,
         Query(params): Query<Params>,
     ) -> Result<StatusCode, AppError> {
-        let mut conn = LazyConn::new(state.db_pool.clone());
+        let mut conn = get_conn!(state);
 
         // Check existence of email
         if params.r#type == "email" && email_exists(&params.value, &mut conn).await? {
@@ -160,7 +161,7 @@ mod me {
         session: AuthSession,
         State(state): State<ArcAppState>,
     ) -> Result<ApiResponse<AuthUser>, AppError> {
-        let mut conn = LazyConn::new(state.db_pool.clone());
+        let mut conn = get_conn!(state);
         let user = get_auth_user(&session.user_id, &mut conn)
             .await?
             .ok_or(FuncError::UserNotFound)?;
