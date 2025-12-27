@@ -9,7 +9,7 @@ use validator::Validate;
 
 use crate::{
     database::{
-        auth::{Tokens, create_tokens, get_user_by_email},
+        auth::{Tokens, create_tokens, get_auth_user_by_email},
         conn::LazyConn,
     },
     get_conn,
@@ -41,7 +41,7 @@ mod login {
         let mut conn = get_conn!(state);
 
         // Getting user
-        let user = get_user_by_email(&payload.email, &mut conn)
+        let user = get_auth_user_by_email(&payload.email, &mut conn)
             .await?
             .ok_or(FuncError::UserNotFound)?;
 
@@ -169,6 +169,8 @@ mod me {
         Ok(response(user, StatusCode::OK))
     }
 }
+
+// TODO: Add email and password endpoints
 
 pub fn router() -> Router<ArcAppState> {
     Router::new()

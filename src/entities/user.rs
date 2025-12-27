@@ -1,6 +1,8 @@
 use crate::utils::snowflake::SnowflakeGenerator;
 use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 
+#[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct AuthUser {
     pub username: String,
@@ -19,5 +21,25 @@ impl AuthUser {
     }
 }
 
+/// Struct for giving to frontend
+#[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug)]
-pub struct User {}
+pub struct User {
+    pub user_id: String,
+    pub username: String,
+    pub role_id: i32,
+    pub following_count: Option<i64>,
+    pub followers_count: Option<i64>,
+    pub display_name: Option<String>,
+    pub avatar_url: Option<String>,
+    pub banner_url: Option<String>,
+    pub bio: Option<String>,
+    pub badges: Option<Vec<i16>>,
+    pub languages: Option<Vec<String>>,
+}
+
+impl User {
+    pub fn created_at(&self) -> f64 {
+        SnowflakeGenerator::parse(self.user_id.parse().expect("Wrong ID type")).0
+    }
+}

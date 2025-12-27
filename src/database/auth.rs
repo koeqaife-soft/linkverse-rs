@@ -61,7 +61,7 @@ pub async fn get_auth_user(
 }
 
 /// Get auth user by email
-pub async fn get_user_by_email(
+pub async fn get_auth_user_by_email(
     email: &String,
     conn: &mut LazyConn,
 ) -> Result<Option<AuthUser>, ResultError> {

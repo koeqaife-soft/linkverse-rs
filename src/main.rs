@@ -1,10 +1,11 @@
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
 use crate::utils::state::AppState;
 use axum::Router;
 use dotenvy::dotenv;
 use tracing::{error, info};
 use tracing_subscriber;
+use tower_http::cors::{CorsLayer, Any};
 
 mod database;
 mod endpoints;
@@ -29,7 +30,13 @@ async fn main() {
     let shared_state = Arc::new(state);
 
     let v1_router: Router<()> = endpoints::create_router().with_state(shared_state.clone());
-    let router = Router::new().nest("/v1", v1_router);
+    let router = Router::new().nest("/v1", v1_router).layer(
+            CorsLayer::new()
+                .allow_origin(Any)           
+                .allow_methods(Any)           
+                .allow_headers(Any)             
+                .max_age(Duration::from_secs(3600)) 
+        );
 
     let listener = tokio::net::TcpListener::bind(shared_state.config.url.clone())
         .await
