@@ -2,7 +2,7 @@ use crate::{
     database::conn::{LazyConn, ResultError},
     entities::user::AuthUser,
     utils::{
-        security::{generate_key, generate_token, store_password},
+        security::{generate_key, generate_token, store_password_async},
         state::ArcAppState,
         thread_state::generate_id,
     },
@@ -148,11 +148,11 @@ pub async fn username_exists(username: &String, conn: &mut LazyConn) -> Result<b
 pub async fn create_user(
     username: &String,
     email: &String,
-    password: &String,
+    password: String,
     tx: &mut Transaction<'_>,
 ) -> Result<String, ResultError> {
     let new_user_id = generate_id().to_string();
-    let password_hash = store_password(password);
+    let password_hash = store_password_async(password).await;
     tx.execute(
         "
         INSERT INTO users (user_id, username, email, password_hash)

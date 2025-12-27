@@ -15,7 +15,7 @@ use crate::{
     get_conn,
     utils::{
         response::{ApiResponse, AppError, FuncError, response},
-        security::check_password,
+        security::check_password_async,
         state::ArcAppState,
         validate::{ValidatedJson, validate_username},
     },
@@ -46,10 +46,11 @@ mod login {
             .ok_or(FuncError::UserNotFound)?;
 
         // Checking password
-        let correct = check_password(
-            &user.password_hash.unwrap_or("".to_string()),
-            &payload.password,
-        );
+        let correct = check_password_async(
+            user.password_hash.unwrap_or("".to_string()),
+            payload.password,
+        )
+        .await;
         if !correct {
             return Err(FuncError::IncorrectPassword.into());
         }
@@ -99,13 +100,8 @@ mod register {
 
         // Creating new user and tokens
         let mut tx = conn.transaction().await?;
-        let user_id = create_user(
-            &payload.username,
-            &payload.email,
-            &payload.password,
-            &mut tx,
-        )
-        .await?;
+        let user_id =
+            create_user(&payload.username, &payload.email, payload.password, &mut tx).await?;
         let tokens = create_tokens(user_id, &mut tx, state).await?;
         tx.commit().await?;
 

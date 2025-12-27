@@ -55,6 +55,18 @@ pub fn check_password(stored: &str, password: &str) -> bool {
     new_hash == stored_hash
 }
 
+pub async fn store_password_async(password: String) -> String {
+    tokio::task::spawn_blocking(move || store_password(&password))
+        .await
+        .expect("blocking task panicked")
+}
+
+pub async fn check_password_async(stored: String, password: String) -> bool {
+    tokio::task::spawn_blocking(move || check_password(&stored, &password))
+        .await
+        .expect("blocking task panicked")
+}
+
 #[derive(Debug, Serialize)]
 pub struct DecodedToken {
     pub user_id: String,
@@ -65,16 +77,16 @@ pub struct DecodedToken {
     pub session_id: String,
 }
 
-fn hmac_sha256_hex(message: &str, signature_key: &str) -> String {
+fn hmac_sha256_b64(message: &str, signature_key: &str) -> String {
     let mut mac = HmacSha256::new_from_slice(signature_key.as_bytes()).unwrap();
     mac.update(message.as_bytes());
     let result = mac.finalize().into_bytes();
-    hex::encode(result)
+    general_purpose::STANDARD.encode(result)
 }
 
-fn verify_hmac_hex(message: &str, sig_hex: &str, signature_key: &str) -> bool {
-    let expected = hmac_sha256_hex(message, signature_key);
-    expected.eq_ignore_ascii_case(sig_hex)
+fn verify_hmac_b64(message: &str, sig_b64: &str, signature_key: &str) -> bool {
+    let expected = hmac_sha256_b64(message, signature_key);
+    expected.eq(sig_b64)
 }
 
 pub async fn generate_token(
@@ -103,7 +115,7 @@ pub async fn generate_token(
 
     let payload = b64_encode(&combined.as_bytes());
 
-    let signature = hmac_sha256_hex(&payload, signature_key);
+    let signature = hmac_sha256_b64(&payload, signature_key);
 
     let token = format!("LV {}.{}", payload, signature);
     Ok(token)
@@ -130,7 +142,7 @@ pub fn decode_token(
     let signature = parts_rev[0];
     let payload = parts_rev[1];
 
-    if !verify_hmac_hex(&payload, signature, signature_key) {
+    if !verify_hmac_b64(&payload, signature, signature_key) {
         return Err("INVALID_SIGNATURE".to_string());
     }
 
