@@ -9,7 +9,7 @@ pub struct ApiResponseData<T> {
     #[serde(skip_serializing_if = "Option::is_none")]
     data: Option<T>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    error: Option<String>,
+    error: Option<&'static str>,
 }
 
 #[derive(Debug)]
@@ -38,23 +38,23 @@ impl<T: Serialize> IntoResponse for ApiResponse<T> {
 
 #[derive(Debug)]
 pub enum AppError {
-    NotFound(String),
-    Unauthorized(String),
-    BadRequest(String),
-    Internal(String),
-    Forbidden(String),
-    Conflict(String),
+    NotFound(&'static str),
+    Unauthorized(&'static str),
+    BadRequest(&'static str),
+    Internal(&'static str),
+    Forbidden(&'static str),
+    Conflict(&'static str),
 }
 
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         let (status, error_message) = match &self {
-            AppError::NotFound(msg) => (StatusCode::NOT_FOUND, msg.clone()),
-            AppError::Unauthorized(msg) => (StatusCode::UNAUTHORIZED, msg.clone()),
-            AppError::BadRequest(msg) => (StatusCode::BAD_REQUEST, msg.clone()),
-            AppError::Internal(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg.clone()),
-            AppError::Forbidden(msg) => (StatusCode::FORBIDDEN, msg.clone()),
-            AppError::Conflict(msg) => (StatusCode::CONFLICT, msg.clone()),
+            AppError::NotFound(msg) => (StatusCode::NOT_FOUND, msg),
+            AppError::Unauthorized(msg) => (StatusCode::UNAUTHORIZED, msg),
+            AppError::BadRequest(msg) => (StatusCode::BAD_REQUEST, msg),
+            AppError::Internal(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg),
+            AppError::Forbidden(msg) => (StatusCode::FORBIDDEN, msg),
+            AppError::Conflict(msg) => (StatusCode::CONFLICT, msg),
         };
 
         let body = Json(ApiResponseData::<()> {

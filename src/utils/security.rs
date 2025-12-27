@@ -125,9 +125,9 @@ pub fn decode_token(
     token: &str,
     verify_type: Option<String>,
     signature_key: &str,
-) -> Result<DecodedToken, String> {
+) -> Result<DecodedToken, &'static str> {
     if !token.starts_with("LV ") {
-        return Err("INVALID_TOKEN".to_string());
+        return Err("INVALID_TOKEN");
     }
 
     // remove prefix
@@ -136,41 +136,41 @@ pub fn decode_token(
     // split last '.' for signature
     let parts_rev: Vec<&str> = t.rsplitn(2, '.').collect();
     if parts_rev.len() != 2 {
-        return Err("INVALID_TOKEN_FORMAT".to_string());
+        return Err("INVALID_TOKEN_FORMAT");
     }
     // rsplitn produced [signature, payload]
     let signature = parts_rev[0];
     let payload = parts_rev[1];
 
     if !verify_hmac_b64(&payload, signature, signature_key) {
-        return Err("INVALID_SIGNATURE".to_string());
+        return Err("INVALID_SIGNATURE");
     }
 
     // decrypt
     let decrypted = match b64_decode(payload) {
         Ok(b) => b,
         Err(_) => {
-            return Err("DECODE_ERROR".to_string());
+            return Err("DECODE_ERROR");
         }
     };
 
     let decoded_str = match String::from_utf8(decrypted) {
         Ok(s) => s,
         Err(_) => {
-            return Err("DECODE_ERROR".to_string());
+            return Err("DECODE_ERROR");
         }
     };
 
     let parts: Vec<&str> = decoded_str.split('\0').collect();
     if parts.len() != 5 {
-        return Err("DECODE_ERROR".to_string());
+        return Err("DECODE_ERROR");
     }
 
     let user_id = parts[0].to_string();
     let expiration_ts = match parts[1].parse::<u64>() {
         Ok(v) => v,
         Err(_) => {
-            return Err("DECODE_ERROR".to_string());
+            return Err("DECODE_ERROR");
         }
     };
     let secret = parts[2].to_string();
@@ -178,7 +178,7 @@ pub fn decode_token(
     let key_type = parts[4].to_string();
 
     if verify_type.is_some() && verify_type != Some(key_type.clone()) {
-        return Err("INVALID_TOKEN".to_string());
+        return Err("INVALID_TOKEN");
     }
 
     let now = SystemTime::now()

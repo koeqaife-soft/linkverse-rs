@@ -17,21 +17,21 @@ pub enum ResultError {
 impl From<ResultError> for AppError {
     fn from(err: ResultError) -> Self {
         error!("Database error: {:?}", err);
-        AppError::Internal("INTERNAL_SERVER_ERROR".to_string())
+        AppError::Internal("INTERNAL_SERVER_ERROR")
     }
 }
 
 impl From<deadpool_postgres::PoolError> for AppError {
     fn from(err: deadpool_postgres::PoolError) -> Self {
         error!("Pool error: {:?}", err);
-        AppError::Internal("INTERNAL_SERVER_ERROR".to_string())
+        AppError::Internal("INTERNAL_SERVER_ERROR")
     }
 }
 
 impl From<tokio_postgres::Error> for AppError {
     fn from(err: tokio_postgres::Error) -> Self {
         error!("Tokio postgres error: {:?}", err);
-        AppError::Internal("INTERNAL_SERVER_ERROR".to_string())
+        AppError::Internal("INTERNAL_SERVER_ERROR")
     }
 }
 
