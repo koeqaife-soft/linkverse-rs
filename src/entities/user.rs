@@ -27,6 +27,7 @@ impl AuthUser {
 pub struct User {
     pub user_id: String,
     pub username: String,
+    #[serde(skip_serializing)]
     pub role_id: i32,
     pub following_count: Option<i64>,
     pub followers_count: Option<i64>,
