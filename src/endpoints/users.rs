@@ -24,6 +24,7 @@ mod me {
     pub struct Returns {
         #[serde(flatten)]
         pub user: User,
+        pub created_at: f64,
         pub permissions: Vec<&'static str>,
     }
 
@@ -39,7 +40,14 @@ mod me {
         let perms = role_permissions(&user.role_id);
         let permissions = permissions_to_list(perms);
 
-        Ok(response(Returns { user, permissions }, StatusCode::OK))
+        Ok(response(
+            Returns {
+                created_at: user.created_at(),
+                user,
+                permissions,
+            },
+            StatusCode::OK,
+        ))
     }
 }
 
