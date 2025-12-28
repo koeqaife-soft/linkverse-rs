@@ -51,6 +51,42 @@ mod me {
     }
 }
 
+mod get_user {
+    use axum::extract::Path;
+
+    use crate::database::users::get_user;
+
+    use super::*;
+
+    #[derive(Debug, Serialize)]
+    pub struct Returns {
+        #[serde(flatten)]
+        pub user: User,
+        pub created_at: f64,
+    }
+
+    pub async fn handler(
+        _session: AuthSession,
+        State(state): State<ArcAppState>,
+        Path(user_id): Path<String>,
+    ) -> Result<ApiResponse<Returns>, AppError> {
+        let mut conn = get_conn!(state);
+        let user = get_user(&user_id, &mut conn)
+            .await?
+            .ok_or(FuncError::UserNotFound)?;
+
+        Ok(response(
+            Returns {
+                created_at: user.created_at(),
+                user,
+            },
+            StatusCode::OK,
+        ))
+    }
+}
+
 pub fn router() -> Router<ArcAppState> {
-    Router::new().route("/me", get(me::handler))
+    Router::new()
+        .route("/me", get(me::handler))
+        .route("/:user_id", get(get_user::handler))
 }
