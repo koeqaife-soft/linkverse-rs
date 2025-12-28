@@ -88,5 +88,5 @@ mod get_user {
 pub fn router() -> Router<ArcAppState> {
     Router::new()
         .route("/me", get(me::handler))
-        .route("/:user_id", get(get_user::handler))
+        .route("/{user_id}", get(get_user::handler))
 }
