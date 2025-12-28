@@ -1,7 +1,10 @@
 use std::{any, sync::Arc, time::Duration};
 
-use crate::utils::state::AppState;
-use axum::Router;
+use crate::utils::{
+    response::{AppError, FuncError},
+    state::AppState,
+};
+use axum::{Router, body::Body, response::IntoResponse};
 use dotenvy::dotenv;
 use tower_http::{
     catch_panic::CatchPanicLayer,
@@ -11,8 +14,6 @@ use tracing::{error, info};
 use tracing_subscriber;
 
 use axum::http::Response;
-use bytes::Bytes;
-use http_body_util::Full;
 
 mod database;
 mod endpoints;
@@ -21,7 +22,7 @@ mod extractors;
 mod services;
 mod utils;
 
-fn panic_handler(err: Box<dyn any::Any + Send + 'static>) -> Response<Full<Bytes>> {
+fn panic_handler(err: Box<dyn any::Any + Send + 'static>) -> Response<Body> {
     let msg = if let Some(s) = err.downcast_ref::<&str>() {
         s.to_string()
     } else if let Some(s) = err.downcast_ref::<String>() {
@@ -31,17 +32,7 @@ fn panic_handler(err: Box<dyn any::Any + Send + 'static>) -> Response<Full<Bytes
     };
     error!("PANIC: {}", msg);
 
-    let body = serde_json::json!({
-        "success": false,
-        "error": "INTERNAL_SERVER_ERROR",
-    })
-    .to_string();
-
-    Response::builder()
-        .status(500)
-        .header("content-type", "application/json")
-        .body(Full::from(body))
-        .unwrap()
+    AppError::from(FuncError::InternalServerError).into_response()
 }
 
 #[tokio::main(flavor = "multi_thread")]
