@@ -29,6 +29,7 @@ fn panic_handler(err: Box<dyn any::Any + Send + 'static>) -> Response<Full<Bytes
     } else {
         "Unknown panic".to_string()
     };
+    error!("PANIC: {}", msg);
 
     let body = serde_json::json!({
         "success": false,
