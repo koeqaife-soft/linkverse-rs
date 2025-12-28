@@ -917,11 +917,13 @@ dependencies = [
  "axum",
  "base64",
  "bitflags",
+ "bytes",
  "deadpool-postgres",
  "dotenvy",
  "fred",
  "hex",
  "hmac",
+ "http-body-util",
  "pbkdf2",
  "rand 0.9.2",
  "regex",
@@ -932,6 +934,7 @@ dependencies = [
  "thiserror",
  "tokio",
  "tokio-postgres",
+ "tower",
  "tower-http",
  "tracing",
  "tracing-subscriber",
@@ -1839,10 +1842,14 @@ checksum = "d4e6559d53cc268e5031cd8429d05415bc4cb4aefc4aa5d6cc35fbf5b924a1f8"
 dependencies = [
  "bitflags",
  "bytes",
+ "futures-util",
  "http",
+ "http-body",
+ "http-body-util",
  "pin-project-lite",
  "tower-layer",
  "tower-service",
+ "tracing",
 ]
 
 [[package]]

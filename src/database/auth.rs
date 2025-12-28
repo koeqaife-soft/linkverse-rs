@@ -1,5 +1,5 @@
 use crate::{
-    database::conn::{LazyConn, ResultError},
+    database::conn::LazyConn,
     entities::user::AuthUser,
     utils::{
         security::{generate_key, generate_token, store_password_async},
@@ -22,8 +22,8 @@ async fn get_user_by(
     conn: &mut LazyConn,
     query_param: &(dyn tokio_postgres::types::ToSql + Sync),
     where_clause: &str,
-) -> Result<Option<AuthUser>, ResultError> {
-    let db = conn.get_client().await?;
+) -> Option<AuthUser> {
+    let db = conn.get_client().await.unwrap();
     let sql = format!(
         "
         SELECT username, user_id, email, password_hash,
@@ -35,9 +35,9 @@ async fn get_user_by(
         where_clause
     );
 
-    let row = db.query_opt(&sql, &[query_param]).await?;
+    let row = db.query_opt(&sql, &[query_param]).await.unwrap();
 
-    Ok(row.map(row_to_auth_user))
+    row.map(row_to_auth_user)
 }
 
 fn row_to_auth_user(row: Row) -> AuthUser {
@@ -53,18 +53,12 @@ fn row_to_auth_user(row: Row) -> AuthUser {
 }
 
 /// Get auth user by user_id
-pub async fn get_auth_user(
-    user_id: &String,
-    conn: &mut LazyConn,
-) -> Result<Option<AuthUser>, ResultError> {
+pub async fn get_auth_user(user_id: &String, conn: &mut LazyConn) -> Option<AuthUser> {
     get_user_by(conn, user_id, "user_id = $1").await
 }
 
 /// Get auth user by email
-pub async fn get_auth_user_by_email(
-    email: &String,
-    conn: &mut LazyConn,
-) -> Result<Option<AuthUser>, ResultError> {
+pub async fn get_auth_user_by_email(email: &String, conn: &mut LazyConn) -> Option<AuthUser> {
     get_user_by(conn, email, "email = $1").await
 }
 
@@ -73,7 +67,7 @@ pub async fn create_tokens(
     user_id: String,
     tx: &mut Transaction<'_>,
     state: ArcAppState,
-) -> Result<Tokens, ResultError> {
+) -> Tokens {
     let new_secret = generate_key(16);
     let new_session_id = generate_id().to_string();
 
@@ -85,7 +79,7 @@ pub async fn create_tokens(
         &new_session_id,
         &state.config.signature_key,
     )
-    .await?;
+    .await;
 
     let access = generate_token(
         &user_id,
@@ -95,7 +89,7 @@ pub async fn create_tokens(
         &new_session_id,
         &state.config.signature_key,
     )
-    .await?;
+    .await;
 
     tx.execute(
         "
@@ -104,14 +98,15 @@ pub async fn create_tokens(
         ",
         &[&user_id, &new_secret, &new_session_id],
     )
-    .await?;
+    .await
+    .unwrap();
 
-    Ok(Tokens { refresh, access })
+    Tokens { refresh, access }
 }
 
 /// Check if user with email already exists
-pub async fn email_exists(email: &String, conn: &mut LazyConn) -> Result<bool, ResultError> {
-    let db = conn.get_client().await?;
+pub async fn email_exists(email: &String, conn: &mut LazyConn) -> bool {
+    let db = conn.get_client().await.unwrap();
 
     let value = db
         .query_opt(
@@ -122,13 +117,14 @@ pub async fn email_exists(email: &String, conn: &mut LazyConn) -> Result<bool, R
             ",
             &[email],
         )
-        .await?;
-    Ok(value.is_some())
+        .await
+        .unwrap();
+    value.is_some()
 }
 
 /// Check username
-pub async fn username_exists(username: &String, conn: &mut LazyConn) -> Result<bool, ResultError> {
-    let db = conn.get_client().await?;
+pub async fn username_exists(username: &String, conn: &mut LazyConn) -> bool {
+    let db = conn.get_client().await.unwrap();
 
     let value = db
         .query_opt(
@@ -139,8 +135,9 @@ pub async fn username_exists(username: &String, conn: &mut LazyConn) -> Result<b
             ",
             &[username],
         )
-        .await?;
-    Ok(value.is_some())
+        .await
+        .unwrap();
+    value.is_some()
 }
 
 /// Create new user
@@ -150,7 +147,7 @@ pub async fn create_user(
     email: &String,
     password: String,
     tx: &mut Transaction<'_>,
-) -> Result<String, ResultError> {
+) -> String {
     let new_user_id = generate_id().to_string();
     let password_hash = store_password_async(password).await;
     tx.execute(
@@ -160,8 +157,9 @@ pub async fn create_user(
         ",
         &[&new_user_id, username, email, &password_hash],
     )
-    .await?;
-    Ok(new_user_id)
+    .await
+    .unwrap();
+    new_user_id
 }
 
 /// Check user session secret
@@ -170,8 +168,8 @@ pub async fn check_session_secret(
     session_id: &String,
     secret: &String,
     conn: &mut LazyConn,
-) -> Result<bool, ResultError> {
-    let db = conn.get_client().await?;
+) -> bool {
+    let db = conn.get_client().await.unwrap();
 
     let value = db
         .query_opt(
@@ -184,6 +182,7 @@ pub async fn check_session_secret(
             ",
             &[user_id, session_id, secret],
         )
-        .await?;
-    Ok(value.is_some())
+        .await
+        .unwrap();
+    value.is_some()
 }

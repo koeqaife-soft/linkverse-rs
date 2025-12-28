@@ -1,10 +1,6 @@
 use tokio_postgres::Row;
 
-use crate::{
-    database::conn::{LazyConn, ResultError},
-    entities::user::User,
-    utils::storage::normalize_url,
-};
+use crate::{database::conn::LazyConn, entities::user::User, utils::storage::normalize_url};
 
 /// Private function for converting Row to User
 fn row_to_user(row: Row) -> User {
@@ -19,13 +15,13 @@ fn row_to_user(row: Row) -> User {
         badges: row.get("badges"),
         languages: row.get("languages"),
         following_count: row.get("following_count"),
-        followers_count: row.get("followers_count")
+        followers_count: row.get("followers_count"),
     }
 }
 
 /// Get minimized user from database
-pub async fn get_min_user(user_id: &String, conn: &mut LazyConn) -> Result<Option<User>, ResultError> {
-    let db = conn.get_client().await?;
+pub async fn get_min_user(user_id: &String, conn: &mut LazyConn) -> Option<User> {
+    let db = conn.get_client().await.unwrap();
     let sql = "
         SELECT u.user_id, u.username, p.display_name, u.role_id,
                ac.objects[1] as avatar_url
@@ -34,13 +30,13 @@ pub async fn get_min_user(user_id: &String, conn: &mut LazyConn) -> Result<Optio
         LEFT JOIN files ac ON ac.context_id = p.avatar_context_id
         WHERE u.user_id = $1;
     ";
-    let row = db.query_opt(sql, &[user_id]).await?;
-    Ok(row.map(row_to_user))
+    let row = db.query_opt(sql, &[user_id]).await.unwrap();
+    row.map(row_to_user)
 }
 
 /// Get full user from database
-pub async fn get_user(user_id: &String, conn: &mut LazyConn) -> Result<Option<User>, ResultError> {
-    let db = conn.get_client().await?;
+pub async fn get_user(user_id: &String, conn: &mut LazyConn) -> Option<User> {
+    let db = conn.get_client().await.unwrap();
     let sql = "
         SELECT u.user_id, u.username, p.display_name, u.role_id,
                ac.objects[1] as avatar_url,
@@ -52,6 +48,6 @@ pub async fn get_user(user_id: &String, conn: &mut LazyConn) -> Result<Option<Us
         LEFT JOIN files bc ON bc.context_id = p.banner_context_id
         WHERE u.user_id = $1;
     ";
-    let row = db.query_opt(sql, &[user_id]).await?;
-    Ok(row.map(row_to_user))
+    let row = db.query_opt(sql, &[user_id]).await.unwrap();
+    row.map(row_to_user)
 }

@@ -34,7 +34,7 @@ mod me {
     ) -> Result<ApiResponse<Returns>, AppError> {
         let mut conn = get_conn!(state);
         let user = get_user(&session.user_id, &mut conn)
-            .await?
+            .await
             .ok_or(FuncError::UserNotFound)?;
 
         let perms = role_permissions(&user.role_id);
@@ -72,7 +72,7 @@ mod get_user {
     ) -> Result<ApiResponse<Returns>, AppError> {
         let mut conn = get_conn!(state);
         let user = get_user(&user_id, &mut conn)
-            .await?
+            .await
             .ok_or(FuncError::UserNotFound)?;
 
         Ok(response(

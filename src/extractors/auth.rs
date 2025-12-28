@@ -46,7 +46,7 @@ impl FromRequestParts<ArcAppState> for AuthSession {
             &decoded.secret,
             &mut conn,
         )
-        .await?;
+        .await;
         if !is_valid {
             return Err(FuncError::InvalidToken.into());
         }

@@ -1,58 +1,6 @@
 use std::sync::Arc;
 
 use deadpool_postgres::{Object, Pool, PoolError, Transaction};
-use tracing::error;
-
-use crate::utils::response::AppError;
-
-#[derive(Debug)]
-#[allow(dead_code)]
-pub enum ResultError {
-    PoolError(deadpool_postgres::PoolError),
-    QueryError(tokio_postgres::Error),
-    AnyhowError(anyhow::Error),
-}
-
-// App errors (API)
-impl From<ResultError> for AppError {
-    fn from(err: ResultError) -> Self {
-        error!("Database error: {:?}", err);
-        AppError::Internal("INTERNAL_SERVER_ERROR")
-    }
-}
-
-impl From<deadpool_postgres::PoolError> for AppError {
-    fn from(err: deadpool_postgres::PoolError) -> Self {
-        error!("Pool error: {:?}", err);
-        AppError::Internal("INTERNAL_SERVER_ERROR")
-    }
-}
-
-impl From<tokio_postgres::Error> for AppError {
-    fn from(err: tokio_postgres::Error) -> Self {
-        error!("Tokio postgres error: {:?}", err);
-        AppError::Internal("INTERNAL_SERVER_ERROR")
-    }
-}
-
-// Result errors
-impl From<anyhow::Error> for ResultError {
-    fn from(err: anyhow::Error) -> Self {
-        Self::AnyhowError(err)
-    }
-}
-
-impl From<deadpool_postgres::PoolError> for ResultError {
-    fn from(err: deadpool_postgres::PoolError) -> Self {
-        Self::PoolError(err)
-    }
-}
-
-impl From<tokio_postgres::Error> for ResultError {
-    fn from(err: tokio_postgres::Error) -> Self {
-        Self::QueryError(err)
-    }
-}
 
 pub struct LazyConn {
     pool: Arc<Pool>,

@@ -1,4 +1,3 @@
-use anyhow::{Result, anyhow};
 use base64::Engine;
 use base64::engine::general_purpose;
 use hmac::Hmac;
@@ -96,10 +95,10 @@ pub async fn generate_token(
     secret: &str,
     session_id: &str,
     signature_key: &str,
-) -> Result<String> {
+) -> String {
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .map_err(|e| anyhow!("time error: {:?}", e))?
+        .unwrap()
         .as_secs();
 
     let expiration = if long_term {
@@ -118,7 +117,7 @@ pub async fn generate_token(
     let signature = hmac_sha256_b64(&payload, signature_key);
 
     let token = format!("LV {}.{}", payload, signature);
-    Ok(token)
+    token
 }
 
 pub fn decode_token(
