@@ -8,10 +8,7 @@ use serde::Deserialize;
 use validator::Validate;
 
 use crate::{
-    database::{
-        auth::{Tokens, create_tokens, get_auth_user_by_email},
-        conn::LazyConn,
-    },
+    database::conn::LazyConn,
     get_conn,
     utils::{
         response::{ApiResponse, AppError, FuncError, response},
@@ -23,6 +20,8 @@ use crate::{
 
 /// Login endpoint
 mod login {
+    use crate::database::auth::{Tokens, create_tokens, get_auth_user_by_email};
+
     use super::*;
 
     #[derive(Debug, Deserialize, Validate)]
@@ -66,7 +65,9 @@ mod login {
 
 /// Register endpoint
 mod register {
-    use crate::database::auth::{create_user, email_exists, username_exists};
+    use crate::database::auth::{
+        Tokens, create_tokens, create_user, email_exists, username_exists,
+    };
 
     use super::*;
 
@@ -166,6 +167,76 @@ mod me {
     }
 }
 
+mod refresh {
+    use crate::{
+        database::auth::{Tokens, check_session_secret, update_tokens},
+        utils::security::decode_token,
+    };
+
+    use super::*;
+    #[derive(Debug, Deserialize, Validate)]
+    pub struct Payload {
+        refresh_token: String,
+    }
+
+    pub async fn handler(
+        State(state): State<ArcAppState>,
+        ValidatedJson(payload): ValidatedJson<Payload>,
+    ) -> Result<ApiResponse<Tokens>, AppError> {
+        // Decode token
+        let decoded = decode_token(
+            &payload.refresh_token,
+            Some("refresh"),
+            &state.config.signature_key,
+        )
+        .map_err(|e| AppError::Unauthorized(e))?;
+
+        // Check if it's expired
+        if decoded.is_expired {
+            return Err(FuncError::ExpiredToken.into());
+        }
+
+        // Check existence of session and check secret key
+        let mut conn = get_conn!(state);
+        let is_valid = check_session_secret(
+            &decoded.user_id,
+            &decoded.session_id,
+            &decoded.secret,
+            &mut conn,
+        )
+        .await;
+        if !is_valid {
+            return Err(FuncError::InvalidToken.into());
+        }
+
+        // Create new tokens
+        let mut tx = conn.transaction().await.unwrap();
+        let tokens = update_tokens(decoded.user_id, decoded.session_id, &mut tx, state).await;
+        tx.commit().await.unwrap();
+
+        Ok(response(tokens, StatusCode::OK))
+    }
+}
+
+mod logout {
+    use crate::{database::auth::remove_session, extractors::auth::AuthSession};
+
+    use super::*;
+
+    pub async fn handler(
+        session: AuthSession,
+        State(state): State<ArcAppState>,
+    ) -> Result<StatusCode, AppError> {
+        let mut conn = get_conn!(state);
+
+        // TODO (future): Send logout requests to WS
+
+        let mut tx = conn.transaction().await.unwrap();
+        remove_session(&session.session_id, &session.user_id, &mut tx).await;
+        Ok(StatusCode::NO_CONTENT)
+    }
+}
+
 // TODO: Add email and password endpoints
 
 pub fn router() -> Router<ArcAppState> {
@@ -174,4 +245,6 @@ pub fn router() -> Router<ArcAppState> {
         .route("/register", post(register::handler))
         .route("/check", get(check::handler))
         .route("/me", get(me::handler))
+        .route("/refresh", post(refresh::handler))
+        .route("/logout", post(logout::handler))
 }

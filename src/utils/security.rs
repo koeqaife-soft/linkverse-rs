@@ -122,7 +122,7 @@ pub async fn generate_token(
 
 pub fn decode_token(
     token: &str,
-    verify_type: Option<String>,
+    verify_type: Option<&'static str>,
     signature_key: &str,
 ) -> Result<DecodedToken, &'static str> {
     if !token.starts_with("LV ") {
@@ -176,7 +176,7 @@ pub fn decode_token(
     let session_id = parts[3].to_string();
     let key_type = parts[4].to_string();
 
-    if verify_type.is_some() && verify_type != Some(key_type.clone()) {
+    if verify_type.is_some() && verify_type != Some(&key_type) {
         return Err("INVALID_TOKEN");
     }
 

@@ -104,6 +104,49 @@ pub async fn create_tokens(
     Tokens { refresh, access }
 }
 
+/// Updates refresh and access tokens for session_id
+pub async fn update_tokens(
+    user_id: String,
+    session_id: String,
+    tx: &mut Transaction<'_>,
+    state: ArcAppState,
+) -> Tokens {
+    let new_secret = generate_key(16);
+
+    let refresh = generate_token(
+        &user_id,
+        "refresh",
+        true,
+        &new_secret,
+        &session_id,
+        &state.config.signature_key,
+    )
+    .await;
+
+    let access = generate_token(
+        &user_id,
+        "access",
+        false,
+        &new_secret,
+        &session_id,
+        &state.config.signature_key,
+    )
+    .await;
+
+    tx.execute(
+        "
+        UPDATE auth_keys
+        SET token_secret = $1
+        WHERE session_id = $2
+        ",
+        &[&new_secret, &session_id],
+    )
+    .await
+    .unwrap();
+
+    Tokens { refresh, access }
+}
+
 /// Check if user with email already exists
 pub async fn email_exists(email: &String, conn: &mut LazyConn) -> bool {
     let db = conn.get_client().await.unwrap();
@@ -185,4 +228,17 @@ pub async fn check_session_secret(
         .await
         .unwrap();
     value.is_some()
+}
+
+/// Deletes session
+pub async fn remove_session(session_id: &String, user_id: &String, tx: &mut Transaction<'_>) {
+    tx.execute(
+        "
+        DELETE FROM auth_keys
+        WHERE user_id = $1 AND session_id = $2;
+        ",
+        &[user_id, session_id],
+    )
+    .await
+    .unwrap();
 }

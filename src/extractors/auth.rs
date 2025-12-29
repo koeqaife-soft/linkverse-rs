@@ -33,7 +33,7 @@ impl FromRequestParts<ArcAppState> for AuthSession {
             .and_then(|v| v.to_str().ok())
             .ok_or(FuncError::Unauthorized)?;
 
-        let decoded = decode_token(token, Some("access".to_string()), &app.config.signature_key)
+        let decoded = decode_token(token, Some("access"), &app.config.signature_key)
             .map_err(|e| AppError::Unauthorized(e))?;
         if decoded.is_expired {
             return Err(FuncError::ExpiredToken.into());
