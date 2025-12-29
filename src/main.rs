@@ -4,7 +4,7 @@ use crate::utils::{
     response::{AppError, FuncError},
     state::AppState,
 };
-use axum::{Router, body::Body, response::IntoResponse};
+use axum::{Router, body::Body, http::StatusCode, response::IntoResponse, routing::get};
 use dotenvy::dotenv;
 use tower_http::{
     catch_panic::CatchPanicLayer,
@@ -35,6 +35,10 @@ fn panic_handler(err: Box<dyn any::Any + Send + 'static>) -> Response<Body> {
     AppError::from(FuncError::InternalServerError).into_response()
 }
 
+async fn ping() -> StatusCode {
+    StatusCode::NO_CONTENT
+}
+
 #[tokio::main(flavor = "multi_thread")]
 async fn main() {
     dotenv().ok();
@@ -52,7 +56,9 @@ async fn main() {
     };
     let shared_state = Arc::new(state);
 
-    let v1_router: Router<()> = endpoints::create_router().with_state(shared_state.clone());
+    let v1_router: Router<()> = endpoints::create_router()
+        .route("/ping", get(ping).post(ping))
+        .with_state(shared_state.clone());
     let router = Router::new().nest("/v1", v1_router).layer(
         tower::ServiceBuilder::new()
             .layer(
