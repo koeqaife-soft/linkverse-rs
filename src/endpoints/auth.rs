@@ -8,6 +8,7 @@ use serde::Deserialize;
 use validator::Validate;
 
 use crate::{
+    create_tx,
     database::conn::LazyConn,
     get_conn,
     utils::{
@@ -55,7 +56,7 @@ mod login {
         }
 
         // Generating tokens
-        let mut tx = conn.transaction().await.unwrap();
+        let mut tx = create_tx!(conn);
         let tokens = create_tokens(user.user_id, &mut tx, state).await;
         tx.commit().await.unwrap();
 
@@ -100,7 +101,7 @@ mod register {
         }
 
         // Creating new user and tokens
-        let mut tx = conn.transaction().await.unwrap();
+        let mut tx = create_tx!(conn);
         let user_id =
             create_user(&payload.username, &payload.email, payload.password, &mut tx).await;
         let tokens = create_tokens(user_id, &mut tx, state).await;
@@ -210,7 +211,7 @@ mod refresh {
         }
 
         // Create new tokens
-        let mut tx = conn.transaction().await.unwrap();
+        let mut tx = create_tx!(conn);
         let tokens = update_tokens(decoded.user_id, decoded.session_id, &mut tx, state).await;
         tx.commit().await.unwrap();
 
@@ -231,7 +232,7 @@ mod logout {
 
         // TODO (future): Send logout requests to WS
 
-        let mut tx = conn.transaction().await.unwrap();
+        let mut tx = create_tx!(conn);
         remove_session(&session.session_id, &session.user_id, &mut tx).await;
         tx.commit().await.unwrap();
         Ok(StatusCode::NO_CONTENT)

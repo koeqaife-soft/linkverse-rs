@@ -2,6 +2,7 @@ use axum::{Router, extract::State, http::StatusCode, routing::get};
 use serde::Serialize;
 
 use crate::{
+    create_tx,
     database::conn::LazyConn,
     entities::user::User,
     extractors::auth::AuthSession,
@@ -13,15 +14,10 @@ use crate::{
 };
 
 mod me {
-    use serde::Deserialize;
-    use validator::Validate;
 
     use crate::{
-        database::users::{UserProfileUpdate, get_user, update_user_profile},
-        utils::{
-            perms::{permissions_to_list, role_permissions},
-            validate::ValidatedJson,
-        },
+        database::users::get_user,
+        utils::perms::{permissions_to_list, role_permissions},
     };
 
     use super::*;
@@ -101,7 +97,7 @@ mod patch_me {
         ValidatedJson(payload): ValidatedJson<Payload>,
     ) -> Result<StatusCode, AppError> {
         let mut conn = get_conn!(state);
-        let mut tx = conn.transaction().await.unwrap();
+        let mut tx = create_tx!(conn);
 
         // We convert PatchPayload to UserProfileUpdate so we can validate
         // Validation has to be in endpoints/ not in database/ so we gotta do this here

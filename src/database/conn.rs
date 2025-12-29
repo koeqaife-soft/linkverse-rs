@@ -32,3 +32,10 @@ macro_rules! get_conn {
         LazyConn::new($state.db_pool.clone())
     };
 }
+
+#[macro_export]
+macro_rules! create_tx {
+    ($conn:expr) => {
+        $conn.transaction().await.unwrap()
+    };
+}

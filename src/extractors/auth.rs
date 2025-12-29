@@ -5,6 +5,7 @@ use axum::{
 
 use crate::{
     database::{auth::check_session_secret, conn::LazyConn},
+    get_conn,
     utils::{
         response::{AppError, FuncError},
         security::decode_token,
@@ -39,7 +40,7 @@ impl FromRequestParts<ArcAppState> for AuthSession {
             return Err(FuncError::ExpiredToken.into());
         }
 
-        let mut conn = LazyConn::new(app.db_pool.clone());
+        let mut conn = get_conn!(app);
         let is_valid = check_session_secret(
             &decoded.user_id,
             &decoded.session_id,
