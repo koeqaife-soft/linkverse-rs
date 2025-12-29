@@ -106,7 +106,7 @@ mod patch_me {
         // We convert PatchPayload to UserProfileUpdate so we can validate
         // Validation has to be in endpoints/ not in database/ so we gotta do this here
         // That's my choice
-        update_user_profile(
+        if update_user_profile(
             &session.user_id,
             UserProfileUpdate {
                 display_name: payload.display_name,
@@ -117,9 +117,10 @@ mod patch_me {
             },
             &mut tx,
         )
-        .await;
-
-        tx.commit().await.unwrap();
+        .await
+        {
+            tx.commit().await.unwrap();
+        }
 
         Ok(StatusCode::NO_CONTENT)
     }

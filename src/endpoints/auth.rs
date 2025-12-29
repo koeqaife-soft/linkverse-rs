@@ -233,6 +233,7 @@ mod logout {
 
         let mut tx = conn.transaction().await.unwrap();
         remove_session(&session.session_id, &session.user_id, &mut tx).await;
+        tx.commit().await.unwrap();
         Ok(StatusCode::NO_CONTENT)
     }
 }

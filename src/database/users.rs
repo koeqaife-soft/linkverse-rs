@@ -1,6 +1,6 @@
 use deadpool_postgres::Transaction;
 use serde::Deserialize;
-use tokio_postgres::Row;
+use tokio_postgres::{Row, types::ToSql};
 
 use crate::{database::conn::LazyConn, entities::user::User, utils::storage::normalize_url};
 
@@ -63,48 +63,77 @@ pub struct UserProfileUpdate {
     pub languages: Option<Vec<String>>,
 }
 
+/// Private function for 'update_user_profile'
+fn push_opt<'a, T: tokio_postgres::types::ToSql + Sync>(
+    opt: &'a Option<T>,
+    column: &'static str,
+    columns: &mut Vec<&'static str>,
+    values: &mut Vec<&'a (dyn tokio_postgres::types::ToSql + Sync)>,
+) {
+    if let Some(v) = opt.as_ref() {
+        columns.push(column);
+        values.push(v);
+    }
+}
+
 /// Updates user profile
 pub async fn update_user_profile(
     user_id: &str,
     update: UserProfileUpdate,
     tx: &mut Transaction<'_>,
 ) -> bool {
-    let mut set_clauses = Vec::new();
-    let mut values: Vec<&(dyn tokio_postgres::types::ToSql + Sync)> = Vec::new();
+    let mut columns: Vec<&str> = Vec::new();
+    let mut values: Vec<&(dyn ToSql + Sync)> = Vec::new();
 
-    if let Some(ref name) = update.display_name {
-        values.push(name);
-        set_clauses.push(format!("display_name = ${}", values.len() + 1));
-    }
-    if let Some(ref avatar) = update.avatar_context_id {
-        values.push(avatar);
-        set_clauses.push(format!("avatar_context_id = ${}", values.len() + 1));
-    }
-    if let Some(ref banner) = update.banner_context_id {
-        values.push(banner);
-        set_clauses.push(format!("banner_context_id = ${}", values.len() + 1));
-    }
-    if let Some(ref bio) = update.bio {
-        values.push(bio);
-        set_clauses.push(format!("bio = ${}", values.len() + 1));
-    }
-    if let Some(ref langs) = update.languages {
-        values.push(langs);
-        set_clauses.push(format!("languages = ${}", values.len() + 1));
-    }
+    push_opt(
+        &update.display_name,
+        "display_name",
+        &mut columns,
+        &mut values,
+    );
+    push_opt(
+        &update.avatar_context_id,
+        "avatar_context_id",
+        &mut columns,
+        &mut values,
+    );
+    push_opt(
+        &update.banner_context_id,
+        "banner_context_id",
+        &mut columns,
+        &mut values,
+    );
+    push_opt(&update.bio, "bio", &mut columns, &mut values);
+    push_opt(&update.languages, "languages", &mut columns, &mut values);
 
-    if set_clauses.is_empty() {
+    if columns.is_empty() {
         return false;
     }
 
+    // columns like "display_name, avatar_context_id, ..."
+    let columns_str = columns.join(", ");
+
+    // placeholders $2, $3, ... ($1 reserved for user_id)
+    let placeholders: Vec<String> = (0..values.len()).map(|i| format!("${}", i + 2)).collect();
+    let placeholders_str = placeholders.join(", ");
+
+    // update clause: col = EXCLUDED.col, ...
+    let update_clause: Vec<String> = columns
+        .iter()
+        .map(|c| format!("{} = EXCLUDED.{}", c, c))
+        .collect();
+    let update_clause_str = update_clause.join(", ");
+
     let query = format!(
-        "UPDATE user_profiles SET {} WHERE user_id = $1",
-        set_clauses.join(", ")
+        "INSERT INTO user_profiles (user_id, {}) VALUES ($1, {}) \
+         ON CONFLICT (user_id) DO UPDATE SET {}",
+        columns_str, placeholders_str, update_clause_str
     );
 
-    let mut params: Vec<&(dyn tokio_postgres::types::ToSql + Sync)> = vec![&user_id];
+    let mut params: Vec<&(dyn ToSql + Sync)> = vec![&user_id];
     params.extend(values);
 
+    // execute
     tx.execute(query.as_str(), &params).await.unwrap();
     true
 }
