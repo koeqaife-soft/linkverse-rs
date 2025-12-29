@@ -13,13 +13,20 @@ use crate::{
 };
 
 mod me {
+    use serde::Deserialize;
+    use validator::Validate;
+
     use crate::{
-        database::users::get_user,
-        utils::perms::{permissions_to_list, role_permissions},
+        database::users::{UserProfileUpdate, get_user, update_user_profile},
+        utils::{
+            perms::{permissions_to_list, role_permissions},
+            validate::ValidatedJson,
+        },
     };
 
     use super::*;
 
+    // Get current user
     #[derive(Debug, Serialize)]
     pub struct Returns {
         #[serde(flatten)]
@@ -48,6 +55,73 @@ mod me {
             },
             StatusCode::OK,
         ))
+    }
+}
+
+mod patch_me {
+    use serde::Deserialize;
+    use validator::{Validate, ValidationError};
+
+    use super::*;
+    use crate::{
+        database::users::{UserProfileUpdate, update_user_profile},
+        utils::validate::ValidatedJson,
+    };
+
+    fn validate_languages(langs: &Vec<String>) -> Result<(), ValidationError> {
+        if langs.len() > 8 {
+            return Err(ValidationError::new("too_many_languages"));
+        }
+        for lang in langs {
+            if lang.len() > 16 {
+                return Err(ValidationError::new("language_too_long"));
+            }
+        }
+        Ok(())
+    }
+
+    // Patch current user's profile
+    #[derive(Debug, Deserialize, Validate)]
+    pub struct Payload {
+        #[validate(length(min = 0, max = 16))]
+        pub display_name: Option<String>,
+        #[validate(length(min = 0, max = 32))]
+        pub avatar_context_id: Option<String>,
+        #[validate(length(min = 0, max = 32))]
+        pub banner_context_id: Option<String>,
+        #[validate(length(min = 0, max = 512))]
+        pub bio: Option<String>,
+        #[validate(custom(function = "validate_languages"))]
+        pub languages: Option<Vec<String>>,
+    }
+
+    pub async fn handler(
+        session: AuthSession,
+        State(state): State<ArcAppState>,
+        ValidatedJson(payload): ValidatedJson<Payload>,
+    ) -> Result<StatusCode, AppError> {
+        let mut conn = get_conn!(state);
+        let mut tx = conn.transaction().await.unwrap();
+
+        // We convert PatchPayload to UserProfileUpdate so we can validate
+        // Validation has to be in endpoints/ not in database/ so we gotta do this here
+        // That's my choice
+        update_user_profile(
+            &session.user_id,
+            UserProfileUpdate {
+                display_name: payload.display_name,
+                avatar_context_id: payload.avatar_context_id,
+                banner_context_id: payload.banner_context_id,
+                bio: payload.bio,
+                languages: payload.languages,
+            },
+            &mut tx,
+        )
+        .await;
+
+        tx.commit().await.unwrap();
+
+        Ok(StatusCode::NO_CONTENT)
     }
 }
 
@@ -87,6 +161,6 @@ mod get_user {
 
 pub fn router() -> Router<ArcAppState> {
     Router::new()
-        .route("/me", get(me::handler))
+        .route("/me", get(me::handler).patch(patch_me::handler))
         .route("/{user_id}", get(get_user::handler))
 }
