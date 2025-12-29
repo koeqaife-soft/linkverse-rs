@@ -106,7 +106,9 @@ mod patch_me {
         // We convert PatchPayload to UserProfileUpdate so we can validate
         // Validation has to be in endpoints/ not in database/ so we gotta do this here
         // That's my choice
-        if update_user_profile(
+        let mut dirty = false;
+
+        dirty |= update_user_profile(
             &session.user_id,
             UserProfileUpdate {
                 display_name: payload.display_name,
@@ -117,8 +119,9 @@ mod patch_me {
             },
             &mut tx,
         )
-        .await
-        {
+        .await;
+
+        if dirty {
             tx.commit().await.unwrap();
         }
 
