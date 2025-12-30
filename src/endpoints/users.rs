@@ -61,6 +61,7 @@ mod patch_me {
     use super::*;
     use crate::{
         database::users::{UserProfileUpdate, update_user_profile},
+        map_struct,
         utils::validate::ValidatedJson,
     };
 
@@ -106,13 +107,13 @@ mod patch_me {
 
         dirty |= update_user_profile(
             &session.user_id,
-            UserProfileUpdate {
-                display_name: payload.display_name,
-                avatar_context_id: payload.avatar_context_id,
-                banner_context_id: payload.banner_context_id,
-                bio: payload.bio,
-                languages: payload.languages,
-            },
+            map_struct!(payload => UserProfileUpdate {
+                display_name,
+                avatar_context_id,
+                banner_context_id,
+                bio,
+                languages,
+            }),
             &mut tx,
         )
         .await;
