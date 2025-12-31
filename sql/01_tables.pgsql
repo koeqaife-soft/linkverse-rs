@@ -57,7 +57,7 @@ CREATE TABLE IF NOT EXISTS posts (
     dislikes_count BIGINT DEFAULT 0,
     comments_count BIGINT DEFAULT 0,
     popularity_score BIGINT GENERATED ALWAYS AS (likes_count - dislikes_count + (comments_count * 0.25)) STORED,
-    tags TEXT[],
+    flags TEXT[],
     file_context_id TEXT,
     status VARCHAR(20) DEFAULT 'active',
     is_deleted BOOLEAN DEFAULT FALSE,
@@ -162,8 +162,9 @@ CREATE TABLE IF NOT EXISTS reports (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS webpush_subscriptions (
+CREATE TABLE IF NOT EXISTS push_subscriptions (
     id TEXT PRIMARY KEY,
+    type TEXT NOT NULL,
     user_id TEXT NOT NULL,
     session_id TEXT NOT NULL,
     expiration_time TIMESTAMPTZ,
