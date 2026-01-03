@@ -6,8 +6,6 @@ use std::sync::Arc;
 use thiserror::Error;
 use tokio_postgres::{Config as PgConfig, NoTls};
 
-use crate::utils::snowflake::SnowflakeGenerator;
-
 #[derive(Debug, Clone)]
 pub struct RedisConfig {
     pub cache_url: String,
