@@ -1,6 +1,5 @@
 use crate::utils::snowflake::SnowflakeGenerator;
 use std::cell::RefCell;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::{env, thread_local};
 
@@ -8,7 +7,7 @@ static THREAD_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
 struct ThreadState {
     worker_id: u64,
-    snowflake: Arc<SnowflakeGenerator>,
+    snowflake: SnowflakeGenerator,
 }
 
 thread_local! {
@@ -26,13 +25,13 @@ where
 
             *opt = Some(ThreadState {
                 worker_id: id,
-                snowflake: Arc::new(SnowflakeGenerator::new(
+                snowflake: SnowflakeGenerator::new(
                     env::var("SERVER_ID")
                         .unwrap_or("0".to_string())
                         .parse()
                         .expect("SERVER_ID wrong type"),
                     id,
-                )),
+                ),
             });
         }
 
