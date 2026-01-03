@@ -1,5 +1,4 @@
 use deadpool_postgres::Transaction;
-use serde::Deserialize;
 use tokio_postgres::{Row, types::ToSql};
 
 use crate::{database::conn::LazyConn, entities::user::User, utils::storage::normalize_url};
